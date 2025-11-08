@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — Dyty Automobile</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    main{max-width:900px;margin:40px auto;padding:20px;background:#fff;border-radius:14px;border:1px solid #e3e3e3}
+    form .row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    label{display:block;font-size:.9rem;margin-bottom:8px}
+    input,textarea{width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ddd;font:inherit}
+    textarea{min-height:80px}
+    .alert{padding:10px 12px;border-radius:8px;margin-bottom:15px;font-size:.9rem}
+    .alert.error{background:#ffe6e6;color:#b30000}
+    .alert.success{background:#e7f8ea;color:#116b2b}
+    .btn{background:#bfa16a;border:none;color:#fff;padding:10px 18px;border-radius:999px;cursor:pointer;font-weight:600;margin-top:12px}
+    .login-box{max-width:400px;margin:60px auto;padding:20px;background:#fff;border:1px solid #e3e3e3;border-radius:14px;text-align:center}
+  </style>
+</head>
+<body>
+<header class="header">
+  <div class="container header-inner">
+    <a class="logo" href="index.html#accueil">Dyty Automobile</a>
+    <nav class="nav">
+      <a href="index.html#stock">Voir le site</a>
+    </nav>
+  </div>
+</header>
+
+<div id="appRoot">
+  <!-- contenu géré en JS -->
+</div>
+
+<script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+  
+    const supabaseUrl = 'https://vosmwhlwkbwkczmwmitx.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvc213aGx3a2J3a2N6bXdtaXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjk4MTMsImV4cCI6MjA3Nzk0NTgxM30.fyvgpiYuZHBpsT6X1Zfs1Z_ALxIndnBFW8N5QcU5yo8';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+  
+    const root = document.getElementById('appRoot');
+    let adminCarsCache = []; // mémorise les voitures chargées pour pouvoir les éditer
+  
+    // Vérifie si une session existe déjà
+    async function checkSession() {
+      const { data } = await supabase.auth.getSession();
+      if (data && data.session) {
+        renderAdmin(data.session.user);
+      } else {
+        renderLogin();
+      }
+    }
+  
+    // Vue de connexion
+    function renderLogin(message = '') {
+      root.innerHTML = `
+        <div class="login-box">
+          <h1>Connexion admin</h1>
+          ${message ? `<div class="alert error">${message}</div>` : ''}
+          <form id="loginForm">
+            <label>Email
+              <input type="email" name="email" required>
+            </label>
+            <label>Mot de passe
+              <input type="password" name="password" required>
+            </label>
+            <button type="submit" class="btn">Se connecter</button>
+          </form>
+        </div>
+      `;
+  
+      const form = document.getElementById('loginForm');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = form.email.value;
+        const password = form.password.value;
+  
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  
+        if (error) {
+          console.error(error);
+          renderLogin("Identifiants incorrects ou erreur de connexion.");
+        } else {
+          renderAdmin(data.user);
+        }
+      });
+    }
+  
+    // Vue admin (formulaire + liste)
+    function renderAdmin(user) {
+      root.innerHTML = `
+        <main>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h1>Admin — Véhicules</h1>
+            <button id="logoutBtn" class="btn" style="background:#999;">Se déconnecter</button>
+          </div>
+  
+          <div id="msgBox"></div>
+  
+          <form id="carForm">
+            <!-- ID caché pour savoir si on est en mode AJOUT ou MODIF -->
+            <input type="hidden" name="id" />
+  
+            <div class="row">
+              <label>Marque
+                <input type="text" name="marque" required>
+              </label>
+              <label>Modèle
+                <input type="text" name="modele" required>
+              </label>
+              <label>Année
+                <input type="number" name="annee" required>
+              </label>
+              <label>Kilométrage
+                <input type="number" name="kilometrage" required>
+              </label>
+              <label>Prix (€)
+                <input type="number" name="prix" required>
+              </label>
+              <label>Carburant
+                <input type="text" name="carburant" placeholder="Diesel, Essence, Hybride…" required>
+              </label>
+              <label>Boîte
+                <input type="text" name="boite" placeholder="Manuelle, Automatique…" required>
+              </label>
+              <label>Couleur
+                <input type="text" name="couleur">
+              </label>
+              <label>Image du véhicule
+                <input type="file" name="image_file" accept="image/*">
+              </label>
+            </div>
+  
+            <label>Description courte
+              <textarea name="description_courte" placeholder="Ex : Première main, entretien suivi..."></textarea>
+            </label>
+  
+            <label>Équipements & options
+              <textarea name="options" placeholder="GPS, Caméra de recul, Sellerie cuir..."></textarea>
+            </label>
+  
+            <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+              <button type="submit" id="submitBtn" class="btn">Ajouter le véhicule</button>
+              <button type="button" id="cancelEditBtn" class="btn" style="background:#ddd;display:none;">Annuler la modification</button>
+            </div>
+          </form>
+  
+          <hr style="margin:30px 0;border:none;border-top:1px solid #eee;" />
+  
+          <h2 style="margin-bottom:10px;">Liste des véhicules</h2>
+          <p style="font-size:.9rem;color:#666;margin-top:0;">
+            Tu peux <strong>modifier</strong>, <strong>marquer comme vendu</strong> ou <strong>supprimer</strong> une annonce déjà publiée ✨
+          </p>
+          <div id="adminCars"></div>
+        </main>
+      `;
+  
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        renderLogin();
+      });
+  
+      const form = document.getElementById('carForm');
+      const msgBox = document.getElementById('msgBox');
+      const submitBtn = document.getElementById('submitBtn');
+      const cancelEditBtn = document.getElementById('cancelEditBtn');
+  
+      // ID de la voiture en cours d’édition (ou null si ajout)
+      let editingCarId = null;
+  
+      // pour garder l’ancienne image si on n’en uploade pas une nouvelle
+      form.dataset.currentImageUrl = '';
+  
+      function resetFormMode() {
+        editingCarId = null;
+        form.reset();
+        form.id.value = '';
+        form.dataset.currentImageUrl = '';
+        submitBtn.textContent = 'Ajouter le véhicule';
+        cancelEditBtn.style.display = 'none';
+      }
+  
+      cancelEditBtn.addEventListener('click', () => {
+        resetFormMode();
+      });
+  
+      // Soumission formulaire (ajout OU modification)
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        msgBox.innerHTML = '';
+  
+        const fileInput = form.querySelector('input[name="image_file"]');
+        const file = fileInput.files[0];
+  
+        let imageUrl = form.dataset.currentImageUrl || null;
+  
+        // Upload de l'image si on en a sélectionné une nouvelle
+        if (file) {
+          const ext = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const filePath = `vehicules/${fileName}`;
+  
+          const { error: uploadError } = await supabase
+            .storage
+            .from('voitures')
+            .upload(filePath, file);
+  
+          if (uploadError) {
+            console.error(uploadError);
+            msgBox.innerHTML = `<div class="alert error">Erreur lors de l’upload de l’image.</div>`;
+            return;
+          }
+  
+          const { data: publicData } = supabase
+            .storage
+            .from('voitures')
+            .getPublicUrl(filePath);
+  
+          imageUrl = publicData.publicUrl;
+        }
+  
+        const payload = {
+          marque: form.marque.value.trim(),
+          modele: form.modele.value.trim(),
+          annee: Number(form.annee.value),
+          kilometrage: Number(form.kilometrage.value),
+          prix: Number(form.prix.value),
+          carburant: form.carburant.value.trim(),
+          boite: form.boite.value.trim(),
+          couleur: form.couleur.value.trim() || null,
+          image_url: imageUrl,
+          description_courte: form.description_courte.value.trim() || null,
+          options: form.options.value.trim() || null,
+        };
+  
+        let error;
+  
+        if (editingCarId) {
+          // 🔁 MODE MODIFICATION
+          ({ error } = await supabase
+            .from('voitures')
+            .update(payload)
+            .eq('id', editingCarId));
+        } else {
+          // ✨ MODE AJOUT (non vendu par défaut)
+          ({ error } = await supabase
+            .from('voitures')
+            .insert({ ...payload, vendu: false }));
+        }
+  
+        if (error) {
+          console.error(error);
+          msgBox.innerHTML = `<div class="alert error">Erreur lors de l’enregistrement du véhicule.</div>`;
+        } else {
+          msgBox.innerHTML = `<div class="alert success">Véhicule enregistré avec succès ✨</div>`;
+          resetFormMode();
+          loadAdminCars({ onEdit: handleEdit }); // on recharge la liste après ajout/modif
+        }
+      });
+  
+      // Callback appelée quand on clique sur "Modifier" dans la liste
+      function handleEdit(car) {
+        editingCarId = car.id;
+        form.id.value = car.id;
+        form.marque.value = car.marque || '';
+        form.modele.value = car.modele || '';
+        form.annee.value = car.annee || '';
+        form.kilometrage.value = car.kilometrage || '';
+        form.prix.value = car.prix || '';
+        form.carburant.value = car.carburant || '';
+        form.boite.value = car.boite || '';
+        form.couleur.value = car.couleur || '';
+        form.description_courte.value = car.description_courte || '';
+        form.options.value = car.options || '';
+        form.dataset.currentImageUrl = car.image_url || '';
+  
+        submitBtn.textContent = 'Mettre à jour le véhicule';
+        cancelEditBtn.style.display = 'inline-block';
+  
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+  
+      // Premier chargement de la liste
+      loadAdminCars({ onEdit: handleEdit });
+    }
+  
+    // Charge la liste des véhicules pour l’admin
+    async function loadAdminCars({ onEdit } = {}) {
+      const container = document.getElementById('adminCars');
+      if (!container) return;
+  
+      const { data, error } = await supabase
+        .from('voitures')
+        .select('*')
+        .order('created_at', { ascending: false });
+  
+      if (error) {
+        console.error(error);
+        container.innerHTML = '<p>Erreur lors du chargement des véhicules.</p>';
+        return;
+      }
+  
+      adminCarsCache = data || [];
+  
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p>Aucun véhicule enregistré pour le moment.</p>';
+        return;
+      }
+  
+      container.innerHTML = '';
+  
+      data.forEach((v) => {
+        const div = document.createElement('div');
+        div.style.padding = '10px 12px';
+        div.style.border = '1px solid #eee';
+        div.style.borderRadius = '10px';
+        div.style.marginBottom = '8px';
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.gap = '10px';
+  
+        div.innerHTML = `
+          <div style="flex:1;">
+            <strong>${v.marque} ${v.modele}</strong>
+            <span style="color:#777;font-size:.9rem;">
+              • ${v.annee} • ${Number(v.kilometrage).toLocaleString('fr-FR')} km
+            </span>
+            ${v.vendu ? '<span style="margin-left:8px;padding:2px 8px;border-radius:999px;background:#fce4e4;color:#b30000;font-size:.8rem;">Vendu</span>' : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button
+              class="btn"
+              style="padding:6px 10px;font-size:.8rem;background:#607D8B;"
+              data-action="edit"
+              data-id="${v.id}"
+            >
+              Modifier
+            </button>
+            <button
+              class="btn"
+              style="padding:6px 10px;font-size:.8rem;${v.vendu ? 'background:#4caf50;' : 'background:#bfa16a;'}"
+              data-action="toggle-sold"
+              data-id="${v.id}"
+            >
+              ${v.vendu ? 'Remettre en vente' : 'Marquer comme vendu'}
+            </button>
+            <button
+              class="btn"
+              style="padding:6px 10px;font-size:.8rem;background:#c62828;"
+              data-action="delete"
+              data-id="${v.id}"
+            >
+              Supprimer
+            </button>
+          </div>
+        `;
+  
+        container.appendChild(div);
+      });
+  
+      // Bouton Modifier
+      if (onEdit) {
+        container.querySelectorAll('button[data-action="edit"]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            const car = adminCarsCache.find((c) => String(c.id) === String(id));
+            if (car) onEdit(car);
+          });
+        });
+      }
+  
+      // Bouton Marquer comme vendu / Remettre en vente
+      container.querySelectorAll('button[data-action="toggle-sold"]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const car = adminCarsCache.find((c) => String(c.id) === String(id));
+          if (!car) return;
+          await setCarSold(id, !car.vendu);
+        });
+      });
+  
+      // Bouton Supprimer
+      container.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          if (confirm('Supprimer définitivement ce véhicule ?')) {
+            await deleteCar(id);
+          }
+        });
+      });
+    }
+  
+    // Met à jour le statut vendu
+    async function setCarSold(id, isSold) {
+      const { error } = await supabase
+        .from('voitures')
+        .update({ vendu: isSold })
+        .eq('id', id);
+  
+      if (error) {
+        alert("Erreur lors de la mise à jour du statut.");
+        console.error(error);
+      } else {
+        loadAdminCars(); // pas besoin de callback ici, juste refresh visuel
+      }
+    }
+  
+    // Supprime un véhicule
+    async function deleteCar(id) {
+      const { error } = await supabase
+        .from('voitures')
+        .delete()
+        .eq('id', id);
+  
+      if (error) {
+        alert("Erreur lors de la suppression.");
+        console.error(error);
+      } else {
+        loadAdminCars();
+      }
+    }
+  
+    // Lancement
+    checkSession();
+  </script>
+  

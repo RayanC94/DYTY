@@ -1,137 +1,118 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dyty Automobile - Véhicules d'Occasion Premium</title>
-    <link rel="stylesheet" href="styles.css"> 
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dyty Automobile — Véhicules d’occasion</title>
+  <meta name="description" content="Vente de voitures d’occasion sélectionnées. Découvrez le stock de Dyty Automobile et contactez-nous." />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container header-inner">
+      <a class="logo" href="#accueil">Dyty Automobile</a>
+      <nav class="nav">
+        <a href="#stock">Véhicules</a>
+        <a href="#contact" class="btn-gold">Contact</a>
+      </nav>
+    </div>
+  </header>
 
-    <header>
-        <div class="logo">Dyty Automobile</div>
-        <nav>
-            <ul>
-                <li><a href="#accueil">Accueil</a></li>
-                <li><a href="#stock">Notre Stock</a></li>
-                <li><a href="#apropos">À Propos</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-        </nav>
-    </header>
+  <!-- HERO simple et doré -->
+  <section id="accueil" class="hero">
+    <div class="container hero-content">
+      <h1 class="hero-title">Dyty Automobile</h1>
+      <p class="hero-subtitle">Votre confiance, notre moteur.</p>
+    </div>
+  </section>
 
-    <section id="accueil" class="hero">
-        <h1>Votre Prochaine Voiture d'Occasion Premium.</h1>
-        <p>Sélection rigoureuse issue des meilleures enchères en France et en Allemagne.</p>
-        <a href="#stock" class="cta-button">Découvrir nos 10 Véhicules</a>
-    </section>
+  <!-- STOCK -->
+  <section id="stock" class="stock">
+    <div class="container">
+      <h2>Nos véhicules disponibles</h2>
 
-    <section id="stock" class="vehicle-grid-container">
-        <h2>Nos Véhicules du Moment</h2>
-        <div class="vehicle-grid">
-            
-            <div class="vehicle-card" data-model="Audi A6">
-                <img src="assets/images/car_01_audi.jpg" alt="Audi A6 3.0 TDI">
-                <h3>Audi A6 3.0 TDI</h3>
-                <p class="price">32 900 €</p>
-                <p class="details">Année: 2021 | Kms: 38 000 | Allemagne</p>
-                <a href="details.html?car=Audi" class="details-button">Voir Détails</a>
-            </div>
+      <div id="vehicleGrid" class="vehicle-grid">
+        <!-- Les cartes voitures seront injectées ici -->
+      </div>
 
-            <div class="vehicle-card" data-model="BMW Série 5">
-                <img src="assets/images/car_02_bmw.jpg" alt="BMW Série 5 520d">
-                <h3>BMW Série 5 520d</h3>
-                <p class="price">25 500 €</p>
-                <p class="details">Année: 2020 | Kms: 45 000 | France</p>
-                <a href="details.html?car=BMW" class="details-button">Voir Détails</a>
-            </div>
+      <p id="noCarsMsg" style="margin-top:20px; display:none;">
+        Aucun véhicule disponible pour le moment.
+      </p>
+    </div>
+  </section>
 
-            <div class="vehicle-card" data-model="Mercedes Classe C">
-                <img src="assets/images/car_03_mercedes.jpg" alt="Mercedes Classe C 220d">
-                <h3>Mercedes C 220d</h3>
-                <p class="price">28 100 €</p>
-                <p class="details">Année: 2019 | Kms: 62 000 | Allemagne</p>
-                <a href="details.html?car=Mercedes" class="details-button">Voir Détails</a>
-            </div>
+  <!-- CONTACT -->
+  <footer id="contact" class="footer">
+    <div class="container">
+      <h2>Contact</h2>
+      <p>
+        <strong>Tél :</strong> <a href="tel:+33123456789">01 23 45 67 89</a> •
+        <strong>Email :</strong> <a href="mailto:contact@dyty-auto.fr">contact@dyty-auto.fr</a>
+      </p>
+      <p class="copyright">© 2025 Dyty Automobile — Tous droits réservés.</p>
+    </div>
+  </footer>
 
-            <div class="vehicle-card" data-model="Porsche Macan">
-                <img src="assets/images/car_04_porsche.jpg" alt="Porsche Macan S">
-                <h3>Porsche Macan S</h3>
-                <p class="price">65 000 €</p>
-                <p class="details">Année: 2018 | Kms: 55 000 | France</p>
-                <a href="details.html?car=Porsche" class="details-button">Voir Détails</a>
-            </div>
-            
-            <div class="vehicle-card" data-model="Renault Clio">
-                <img src="assets/images/car_05_renault.jpg" alt="Renault Clio 5 TCe 100">
-                <h3>Renault Clio V</h3>
-                <p class="price">14 700 €</p>
-                <p class="details">Année: 2022 | Kms: 15 000 | France</p>
-                <a href="details.html?car=Renault" class="details-button">Voir Détails</a>
-            </div>
+  <!-- Supabase + script -->
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-            <div class="vehicle-card" data-model="Volkswagen Golf">
-                <img src="assets/images/car_06_vw.jpg" alt="VW Golf 8 TDI">
-                <h3>VW Golf 8 TDI</h3>
-                <p class="price">21 990 €</p>
-                <p class="details">Année: 2021 | Kms: 29 000 | Allemagne</p>
-                <a href="details.html?car=VW" class="details-button">Voir Détails</a>
-            </div>
+    const supabaseUrl = 'https://vosmwhlwkbwkczmwmitx.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvc213aGx3a2J3a2N6bXdtaXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjk4MTMsImV4cCI6MjA3Nzk0NTgxM30.fyvgpiYuZHBpsT6X1Zfs1Z_ALxIndnBFW8N5QcU5yo8';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+   
+    async function loadCars () {
+      const grid = document.getElementById('vehicleGrid');
+      const emptyMsg = document.getElementById('noCarsMsg');
 
-            <div class="vehicle-card" data-model="Peugeot 3008">
-                <img src="assets/images/car_07_peugeot.jpg" alt="Peugeot 3008 GT Line">
-                <h3>Peugeot 3008</h3>
-                <p class="price">23 500 €</p>
-                <p class="details">Année: 2020 | Kms: 48 000 | France</p>
-                <a href="details.html?car=Peugeot" class="details-button">Voir Détails</a>
-            </div>
+      const { data, error } = await supabase
+        .from('voitures')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-            <div class="vehicle-card" data-model="Audi Q5">
-                <img src="assets/images/car_08_audiq5.jpg" alt="Audi Q5 S Line">
-                <h3>Audi Q5 S Line</h3>
-                <p class="price">41 500 €</p>
-                <p class="details">Année: 2019 | Kms: 51 000 | Allemagne</p>
-                <a href="details.html?car=AudiQ5" class="details-button">Voir Détails</a>
-            </div>
+      if (error) {
+        console.error(error);
+        grid.innerHTML = '<p>Erreur lors du chargement des véhicules.</p>';
+        return;
+      }
 
-            <div class="vehicle-card" data-model="Range Rover Evoque">
-                <img src="assets/images/car_09_range.jpg" alt="Range Rover Evoque D180">
-                <h3>Range Rover Evoque</h3>
-                <p class="price">39 900 €</p>
-                <p class="details">Année: 2018 | Kms: 75 000 | France</p>
-                <a href="details.html?car=Range" class="details-button">Voir Détails</a>
-            </div>
+      if (!data || data.length === 0) {
+        emptyMsg.style.display = 'block';
+        return;
+      }
 
-            <div class="vehicle-card" data-model="Hyundai Tucson">
-                <img src="assets/images/car_10_hyundai.jpg" alt="Hyundai Tucson Hybrid">
-                <h3>Hyundai Tucson</h3>
-                <p class="price">30 000 €</p>
-                <p class="details">Année: 2022 | Kms: 22 000 | Allemagne</p>
-                <a href="details.html?car=Hyundai" class="details-button">Voir Détails</a>
-            </div>
-            
+      grid.innerHTML = '';
+      for (const v of data) {
+        const card = document.createElement('article');
+        card.className = 'car-card';
+
+        const href = `details.html?id=${encodeURIComponent(v.id)}`;
+
+        card.innerHTML = `
+      <a class="card-link" href="${href}">
+        ${v.vendu ? '<div class="badge-vendu">Vendu</div>' : ''}
+        <img src="${v.image_url ? v.image_url : 'placeholder.jpg'}"
+            alt="Photo de ${v.marque} ${v.modele}">
+        <div class="car-body ${v.vendu ? 'car-sold' : ''}">
+          <h3>${v.marque} ${v.modele}</h3>
+          <p>
+            ${v.annee} •
+            ${Number(v.kilometrage).toLocaleString('fr-FR')} km •
+            ${v.carburant}
+          </p>
+          <div class="price">
+            ${Number(v.prix).toLocaleString('fr-FR')} €
+          </div>
         </div>
-    </section>
+      </a>
+    `;
 
-    <section id="apropos" class="about">
-        <h2>La Promesse Dyty Automobile</h2>
-        <p>Dyty Automobile se spécialise dans l'acquisition et la revente de véhicules d'occasion de qualité supérieure, provenant directement des enchères les plus prestigieuses en **Allemagne** et en **France**. Notre expertise garantit un choix premium pour nos clients.</p>
-    </section>
+        grid.appendChild(card);
+      }
+    }
 
-    <footer id="contact">
-        <div class="contact-form-container">
-            <h3>Contactez l'équipe Dyty</h3>
-            <form id="contact-form">
-                <input type="text" name="name" placeholder="Votre Nom" required>
-                <input type="email" name="email" placeholder="Votre Email" required>
-                <textarea name="message" placeholder="Votre Message..." rows="4" required></textarea>
-                <button type="submit" class="cta-button">Envoyer le Message</button>
-            </form>
-            <p class="contact-info">Tél : 01 23 45 67 89 | Email : contact@dyty-auto.fr</p>
-        </div>
-        <p class="copyright">&copy; 2025 Dyty Automobile. Tous droits réservés.</p>
-    </footer>
-    
-    <script src="assets/js/script.js"></script> 
+    loadCars();
+  </script>
 </body>
 </html>
