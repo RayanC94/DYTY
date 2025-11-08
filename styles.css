@@ -59,13 +59,16 @@ h2{text-align:center; color:var(--gold-dark); margin:0 0 24px}
 
 /* Stock */
 .vehicle-grid{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px}
-.car-card{background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow)}
-.card-link{display:block}
+.car-card{background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease}
+.car-card:hover{transform:translateY(-4px); border-color:rgba(194,168,120,.55); box-shadow:0 16px 32px rgba(0,0,0,.12)}
+.car-card:hover .price{color:var(--gold)}
+.card-link{display:block;color:inherit;text-decoration:none}
+.card-link:focus-visible{outline:3px solid rgba(194,168,120,.65);outline-offset:4px;border-radius:16px}
 .car-card img{width:100%; height:200px; object-fit:cover; background:#eee}
 .car-body{padding:16px}
-.car-body h3{margin:0 0 6px}
-.car-body h3 a{text-decoration:none; color:inherit}
-.car-body p{color:var(--muted); margin:0 0 8px}
+.car-body h3{margin:0 0 6px;font-size:1.1rem;font-weight:700;color:var(--text)}
+.car-body p{margin:0 0 8px;color:var(--muted)}
+.car-body p strong{color:var(--text)}
 .price{font-weight:800; color:var(--gold-dark)}
 
 /* Détails */
