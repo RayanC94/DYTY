@@ -144,7 +144,7 @@
 
         const { data, error } = await supabase
           .from('voitures')
-          .select('*')
+          .select('id, marque, modele, image_url, annee, kilometrage, carburant, motorisation, chevaux, prix, vendu, created_at')
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -163,6 +163,8 @@
         }
 
         emptyMsg.hidden = true;
+
+        const fragment = document.createDocumentFragment();
 
         for (const v of data) {
           const card = document.createElement('article');
@@ -196,8 +198,10 @@
       </a>
     `;
 
-          grid.appendChild(card);
+          fragment.appendChild(card);
         }
+
+        grid.appendChild(fragment);
       } catch (err) {
         console.error(err);
         if (loading) {
