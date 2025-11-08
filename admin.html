@@ -16,6 +16,12 @@
     .alert.success{background:#e7f8ea;color:#116b2b}
     .btn{background:#bfa16a;border:none;color:#fff;padding:10px 18px;border-radius:999px;cursor:pointer;font-weight:600;margin-top:12px}
     .login-box{max-width:400px;margin:60px auto;padding:20px;background:#fff;border:1px solid #e3e3e3;border-radius:14px;text-align:center}
+    .hint{display:block;margin-top:4px;font-size:.8rem;color:#6b6b6b}
+    .admin-gallery-preview{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+    .admin-gallery-preview .gallery-chip{position:relative;width:90px;height:90px;border-radius:12px;overflow:hidden;border:1px solid #d8d8d8;background:#f9f9f9}
+    .admin-gallery-preview .gallery-chip img{width:100%;height:100%;object-fit:cover}
+    .admin-gallery-preview .gallery-chip button{position:absolute;top:4px;right:4px;border:none;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:2px 6px;font-size:.7rem;cursor:pointer}
+    .admin-gallery-preview .gallery-chip button:hover{background:rgba(0,0,0,.75)}
   </style>
 </head>
 <body>
@@ -41,6 +47,7 @@
   
     const root = document.getElementById('appRoot');
     let adminCarsCache = []; // mémorise les voitures chargées pour pouvoir les éditer
+    let galleryColumnDetected = false;
   
     // Vérifie si une session existe déjà
     async function checkSession() {
@@ -137,15 +144,21 @@
                 <input type="file" name="image_file" accept="image/*">
               </label>
             </div>
-  
+
             <label>Description courte
               <textarea name="description_courte" placeholder="Ex : Première main, entretien suivi..."></textarea>
             </label>
-  
+
             <label>Équipements & options
               <textarea name="options" placeholder="GPS, Caméra de recul, Sellerie cuir..."></textarea>
             </label>
-  
+
+            <label>Images supplémentaires (galerie)
+              <input type="file" name="gallery_files" accept="image/*" multiple>
+              <span class="hint">Tu peux sélectionner plusieurs fichiers : ils s’ajouteront à la galerie du véhicule.</span>
+            </label>
+            <div id="galleryPreview" class="admin-gallery-preview" aria-live="polite"></div>
+
             <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
               <button type="submit" id="submitBtn" class="btn">Ajouter le véhicule</button>
               <button type="button" id="cancelEditBtn" class="btn" style="background:#ddd;display:none;">Annuler la modification</button>
@@ -171,6 +184,69 @@
       const msgBox = document.getElementById('msgBox');
       const submitBtn = document.getElementById('submitBtn');
       const cancelEditBtn = document.getElementById('cancelEditBtn');
+      const galleryPreview = document.getElementById('galleryPreview');
+      const galleryInput = form.querySelector('input[name="gallery_files"]');
+
+      function normalizeGallery(value) {
+        if (!value) return [];
+        if (Array.isArray(value)) return value.filter(Boolean);
+        if (typeof value === 'string') {
+          try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) return parsed.filter(Boolean);
+          } catch (err) {
+            // fallback: split by separators
+          }
+          return value
+            .split(/[\n;,|]+/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+        return [];
+      }
+
+      function getCurrentGallery() {
+        try {
+          const raw = form.dataset.currentGallery || '[]';
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch (err) {
+          return [];
+        }
+      }
+
+      function updateGalleryPreview(urls = []) {
+        if (!galleryPreview) return;
+        const safeUrls = Array.isArray(urls) ? urls.filter(Boolean) : [];
+        form.dataset.currentGallery = JSON.stringify(safeUrls);
+
+        if (!safeUrls.length) {
+          galleryPreview.innerHTML = '<p class="hint" style="margin:0;">Aucune image dans la galerie pour le moment.</p>';
+          return;
+        }
+
+        galleryPreview.innerHTML = safeUrls
+          .map((url, index) => `
+            <div class="gallery-chip">
+              <img src="${url}" alt="Photo supplémentaire ${index + 1}">
+              <button type="button" data-remove-gallery="${index}" aria-label="Retirer cette photo">&times;</button>
+            </div>
+          `)
+          .join('');
+      }
+
+      if (galleryPreview) {
+        galleryPreview.addEventListener('click', (event) => {
+          const btn = event.target.closest('[data-remove-gallery]');
+          if (!btn) return;
+          event.preventDefault();
+          const index = Number(btn.getAttribute('data-remove-gallery'));
+          if (Number.isNaN(index)) return;
+          const urls = getCurrentGallery();
+          urls.splice(index, 1);
+          updateGalleryPreview(urls);
+        });
+      }
   
       // ID de la voiture en cours d’édition (ou null si ajout)
       let editingCarId = null;
@@ -183,13 +259,17 @@
         form.reset();
         form.id.value = '';
         form.dataset.currentImageUrl = '';
+        form.dataset.currentGallery = '[]';
         submitBtn.textContent = 'Ajouter le véhicule';
         cancelEditBtn.style.display = 'none';
+        updateGalleryPreview([]);
       }
-  
+
       cancelEditBtn.addEventListener('click', () => {
         resetFormMode();
       });
+
+      updateGalleryPreview([]);
   
       // Soumission formulaire (ajout OU modification)
       form.addEventListener('submit', async (e) => {
@@ -198,12 +278,15 @@
   
         const fileInput = form.querySelector('input[name="image_file"]');
         const file = fileInput.files[0];
-  
+        const galleryFiles = galleryInput ? Array.from(galleryInput.files || []) : [];
+
+        let galleryUrls = getCurrentGallery();
+
         let imageUrl = form.dataset.currentImageUrl || null;
   
         // Upload de l'image si on en a sélectionné une nouvelle
         if (file) {
-          const ext = file.name.split('.').pop();
+          const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
           const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
           const filePath = `vehicules/${fileName}`;
   
@@ -225,7 +308,38 @@
   
           imageUrl = publicData.publicUrl;
         }
-  
+
+        if (galleryFiles.length) {
+          for (const gf of galleryFiles) {
+            const ext = gf.name.includes('.') ? gf.name.split('.').pop() : 'jpg';
+            const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+            const filePath = `vehicules/${fileName}`;
+
+            const { error: uploadError } = await supabase
+              .storage
+              .from('voitures')
+              .upload(filePath, gf);
+
+            if (uploadError) {
+              console.error(uploadError);
+              msgBox.innerHTML = `<div class="alert error">Erreur lors de l’upload d’une image de galerie.</div>`;
+              return;
+            }
+
+            const { data: publicData } = supabase
+              .storage
+              .from('voitures')
+              .getPublicUrl(filePath);
+
+            if (publicData?.publicUrl) {
+              galleryUrls.push(publicData.publicUrl);
+            }
+          }
+
+          updateGalleryPreview(galleryUrls);
+          if (galleryInput) galleryInput.value = '';
+        }
+
         const payload = {
           marque: form.marque.value.trim(),
           modele: form.modele.value.trim(),
@@ -241,7 +355,11 @@
           description_courte: form.description_courte.value.trim() || null,
           options: form.options.value.trim() || null,
         };
-  
+
+        if (galleryColumnDetected || galleryUrls.length) {
+          payload.gallery_urls = galleryUrls;
+        }
+
         let error;
   
         if (editingCarId) {
@@ -284,10 +402,11 @@
         form.description_courte.value = car.description_courte || '';
         form.options.value = car.options || '';
         form.dataset.currentImageUrl = car.image_url || '';
-  
+        updateGalleryPreview(normalizeGallery(car.gallery_urls));
+
         submitBtn.textContent = 'Mettre à jour le véhicule';
         cancelEditBtn.style.display = 'inline-block';
-  
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
   
@@ -304,14 +423,15 @@
         .from('voitures')
         .select('*')
         .order('created_at', { ascending: false });
-  
+
       if (error) {
         console.error(error);
         container.innerHTML = '<p>Erreur lors du chargement des véhicules.</p>';
         return;
       }
-  
+
       adminCarsCache = data || [];
+      galleryColumnDetected = (data || []).some((v) => Object.prototype.hasOwnProperty.call(v, 'gallery_urls'));
   
       if (!data || data.length === 0) {
         container.innerHTML = '<p>Aucun véhicule enregistré pour le moment.</p>';

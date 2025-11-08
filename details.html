@@ -33,6 +33,45 @@
     const supabaseUrl = 'https://vosmwhlwkbwkczmwmitx.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvc213aGx3a2J3a2N6bXdtaXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjk4MTMsImV4cCI6MjA3Nzk0NTgxM30.fyvgpiYuZHBpsT6X1Zfs1Z_ALxIndnBFW8N5QcU5yo8';
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const FALLBACK_IMAGE = 'assets/images/hero_background.png';
+
+    function normalizeImageList (value) {
+      if (!value) return [];
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        } catch (err) {
+          // ignore parsing error and fallback to splitting
+        }
+        return value
+          .split(/[\n;,|]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+      return [];
+    }
+
+    function formatParagraphs (text) {
+      if (!text) return '';
+      return text
+        .split(/\n{2,}/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean)
+        .map((paragraph) => `<p class="detail-lead">${paragraph.replace(/\n/g, '<br>')}</p>`)
+        .join('');
+    }
+
+    function formatOptions (text) {
+      if (!text) return '';
+      return text
+        .split(/\r?\n/)
+        .map((line) => line.trim().replace(/^[-•]\s*/, ''))
+        .filter(Boolean)
+        .map((item) => `<li>${item}</li>`)
+        .join('');
+    }
 
     function getIdFromUrl () {
       const params = new URLSearchParams(window.location.search);
@@ -64,65 +103,177 @@
 
       document.title = `${v.marque} ${v.modele} — Dyty Automobile`;
 
-      root.innerHTML = `
-  <div class="detail-grid">
-    <div class="detail-media">
-      ${v.vendu ? '<div class="badge-vendu">Vendu</div>' : ''}
-      <img src="${v.image_url ? v.image_url : 'placeholder.jpg'}"
-           alt="Photo de ${v.marque} ${v.modele}">
-    </div>
+      const gallery = normalizeImageList(v.gallery_urls);
+      const images = [];
+      const seen = new Set();
 
-    <div class="detail-info ${v.vendu ? 'car-sold' : ''}">
-      <h1>${v.marque} ${v.modele}</h1>
-      <p class="muted">
-        ${v.annee} •
-        ${Number(v.kilometrage).toLocaleString('fr-FR')} km •
-        ${v.carburant}
-      </p>
-      ${
-        v.motorisation || v.chevaux
-          ? `<p class="muted">
-              ${v.motorisation ? `${v.motorisation}` : ''}
-              ${v.motorisation && v.chevaux ? ' • ' : ''}
-              ${v.chevaux ? `${v.chevaux} ch` : ''}
-            </p>`
-          : ''
+      if (v.image_url) {
+        images.push(v.image_url);
+        seen.add(v.image_url);
       }
-      <div class="price xl">
-        ${Number(v.prix).toLocaleString('fr-FR')} €
-      </div>
 
-      <dl class="specs">
-        <div><dt>Boîte</dt><dd>${v.boite}</dd></div>
-        <div><dt>Carburant</dt><dd>${v.carburant}</dd></div>
-        ${v.motorisation ? `<div><dt>Motorisation</dt><dd>${v.motorisation}</dd></div>` : ''}
-        ${v.chevaux ? `<div><dt>Puissance</dt><dd>${v.chevaux} ch</dd></div>` : ''}
-        <div><dt>Couleur</dt><dd>${v.couleur ?? ''}</dd></div>
-      </dl>
-
-      ${v.description_courte ? `
-        <h2>En résumé</h2>
-        <p>${v.description_courte.replace(/\n/g, '<br>')}</p>
-      ` : ''}
-
-      ${v.options ? `
-        <h2>Équipements & options</h2>
-        <p>${v.options.replace(/\n/g, '<br>')}</p>
-      ` : ''}
-
-      <div class="actions">
-        ${
-          v.vendu
-            ? '<p style="color:#b30000;font-weight:600;">Ce véhicule est déjà vendu 💔</p>'
-            : `
-              <a href="index.html#contact" class="btn-gold">Réserver un essai</a>
-              <a href="index.html#contact" class="btn-outline">Demander le dossier</a>
-            `
+      for (const url of gallery) {
+        if (!seen.has(url)) {
+          images.push(url);
+          seen.add(url);
         }
-      </div>
-    </div>
-  </div>
-`;
+      }
+
+      if (!images.length) {
+        images.push(FALLBACK_IMAGE);
+      }
+
+      const hasGallery = images.length > 1;
+      const isSold = Boolean(v.vendu);
+      const kmValue = Number(v.kilometrage);
+      const priceValue = Number(v.prix);
+      const priceText = Number.isFinite(priceValue) && priceValue > 0
+        ? `${priceValue.toLocaleString('fr-FR')} €`
+        : 'Prix sur demande';
+
+      const metaParts = [
+        v.annee ? String(v.annee) : null,
+        Number.isFinite(kmValue) && kmValue > 0 ? `${kmValue.toLocaleString('fr-FR')} km` : null,
+        v.carburant ? String(v.carburant) : null,
+      ].filter(Boolean);
+
+      const motorLine = [
+        v.motorisation ? String(v.motorisation) : null,
+        v.chevaux ? `${v.chevaux} ch` : null,
+      ].filter(Boolean).join(' • ');
+
+      const specs = [
+        { label: 'Année', value: v.annee ? String(v.annee) : null },
+        { label: 'Kilométrage', value: Number.isFinite(kmValue) && kmValue > 0 ? `${kmValue.toLocaleString('fr-FR')} km` : null },
+        { label: 'Boîte', value: v.boite ? String(v.boite) : null },
+        { label: 'Carburant', value: v.carburant ? String(v.carburant) : null },
+        { label: 'Motorisation', value: v.motorisation ? String(v.motorisation) : null },
+        { label: 'Puissance', value: v.chevaux ? `${v.chevaux} ch` : null },
+        { label: 'Couleur', value: v.couleur ? String(v.couleur) : null },
+      ].filter((item) => item.value);
+
+      const summaryHtml = formatParagraphs(v.description_courte);
+      const optionsItems = formatOptions(v.options);
+
+      root.innerHTML = `
+        <div class="detail-header">
+          <a class="detail-back" href="index.html#stock">← Retour aux véhicules</a>
+          ${isSold ? '<span class="detail-status">Vendu</span>' : ''}
+        </div>
+
+        <div class="detail-layout">
+          <div class="detail-gallery">
+            <div class="detail-main">
+              ${isSold ? '<div class="badge-vendu">Vendu</div>' : ''}
+              <img data-role="main-image" src="${images[0]}" alt="Photo de ${v.marque} ${v.modele}">
+              ${hasGallery ? `
+                <button class="detail-nav prev" type="button" data-role="prev" aria-label="Photo précédente">‹</button>
+                <button class="detail-nav next" type="button" data-role="next" aria-label="Photo suivante">›</button>
+              ` : ''}
+            </div>
+            ${hasGallery ? `
+              <div class="detail-thumbs" role="list">
+                ${images.map((url, index) => `
+                  <button class="detail-thumb ${index === 0 ? 'is-active' : ''}" type="button" data-role="thumb" data-index="${index}" aria-label="Afficher la photo ${index + 1}">
+                    <img src="${url}" alt="Miniature ${index + 1} de ${v.marque} ${v.modele}">
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+
+          <section class="detail-panel ${isSold ? 'is-sold' : ''}">
+            <h1 class="detail-title">${v.marque} ${v.modele}</h1>
+            ${metaParts.length ? `<p class="detail-meta">${metaParts.join(' • ')}</p>` : ''}
+            ${motorLine ? `<p class="detail-meta">${motorLine}</p>` : ''}
+            <div class="detail-price">${priceText}</div>
+            ${specs.length ? `
+              <dl class="detail-specs">
+                ${specs.map((spec) => `<div><dt>${spec.label}</dt><dd>${spec.value}</dd></div>`).join('')}
+              </dl>
+            ` : ''}
+            <div class="detail-actions">
+              ${isSold ? `
+                <p class="detail-sold-message">Ce véhicule est déjà vendu 💔</p>
+              ` : `
+                <a href="index.html#contact" class="btn-gold">Réserver un essai</a>
+                <a href="index.html#contact" class="btn-outline">Demander le dossier</a>
+              `}
+            </div>
+          </section>
+        </div>
+
+        ${summaryHtml ? `
+          <section class="detail-section">
+            <h2>En résumé</h2>
+            ${summaryHtml}
+          </section>
+        ` : ''}
+
+        ${optionsItems ? `
+          <section class="detail-section">
+            <h2>Équipements & options</h2>
+            <ul class="detail-list">
+              ${optionsItems}
+            </ul>
+          </section>
+        ` : ''}
+
+        <section class="detail-contact">
+          <h2>Prendre contact</h2>
+          <p>Besoin de plus d’informations ou envie d’un essai&nbsp;? Nous sommes joignables par téléphone et par email.</p>
+          <div class="detail-contact-actions">
+            <a href="tel:+33123456789" class="btn-outline">01&nbsp;23&nbsp;45&nbsp;67&nbsp;89</a>
+            <a href="mailto:contact@dyty-auto.fr" class="btn-gold">contact@dyty-auto.fr</a>
+          </div>
+        </section>
+      `;
+
+      const mainImage = root.querySelector('[data-role="main-image"]');
+      const thumbButtons = Array.from(root.querySelectorAll('[data-role="thumb"]'));
+      const prevBtn = root.querySelector('[data-role="prev"]');
+      const nextBtn = root.querySelector('[data-role="next"]');
+
+      let activeIndex = 0;
+
+      function updateMainImage (index) {
+        const boundedIndex = ((index % images.length) + images.length) % images.length;
+        activeIndex = boundedIndex;
+        if (mainImage) {
+          mainImage.src = images[boundedIndex] || FALLBACK_IMAGE;
+          mainImage.alt = `Photo ${boundedIndex + 1} de ${v.marque} ${v.modele}`;
+        }
+        thumbButtons.forEach((btn) => {
+          const btnIndex = Number(btn.getAttribute('data-index'));
+          btn.classList.toggle('is-active', btnIndex === boundedIndex);
+        });
+      }
+
+      thumbButtons.forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+          event.preventDefault();
+          const btnIndex = Number(btn.getAttribute('data-index'));
+          if (!Number.isNaN(btnIndex)) {
+            updateMainImage(btnIndex);
+          }
+        });
+      });
+
+      if (prevBtn) {
+        prevBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          updateMainImage(activeIndex - 1);
+        });
+      }
+
+      if (nextBtn) {
+        nextBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          updateMainImage(activeIndex + 1);
+        });
+      }
+
+      updateMainImage(0);
 
     }
 
