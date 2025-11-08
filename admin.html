@@ -22,6 +22,17 @@
     .admin-gallery-preview .gallery-chip img{width:100%;height:100%;object-fit:cover}
     .admin-gallery-preview .gallery-chip button{position:absolute;top:4px;right:4px;border:none;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:2px 6px;font-size:.7rem;cursor:pointer}
     .admin-gallery-preview .gallery-chip button:hover{background:rgba(0,0,0,.75)}
+
+    /* Dashboard + filtres */
+    .admin-dashboard{display:flex;flex-direction:column;gap:18px;margin:24px 0}
+    .admin-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+    .admin-stat-card{padding:16px;border:1px solid #ececec;border-radius:12px;background:#faf9f6}
+    .admin-stat-card h3{margin:0;font-size:.85rem;font-weight:600;color:#7a6a49;text-transform:uppercase;letter-spacing:.04em}
+    .admin-stat-card strong{display:block;margin-top:6px;font-size:1.6rem;color:#2d2a26}
+    .admin-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .admin-filters label{margin:0;font-size:.85rem;color:#444}
+    .admin-filters input,.admin-filters select{width:auto;min-width:180px;padding:8px 12px;border-radius:999px;border:1px solid #d6d6d6;background:#fff;font:inherit}
+    .admin-filters input{flex:1;min-width:220px}
   </style>
 </head>
 <body>
@@ -39,529 +50,686 @@
 </div>
 
 <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   
-    const supabaseUrl = 'https://vosmwhlwkbwkczmwmitx.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvc213aGx3a2J3a2N6bXdtaXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjk4MTMsImV4cCI6MjA3Nzk0NTgxM30.fyvgpiYuZHBpsT6X1Zfs1Z_ALxIndnBFW8N5QcU5yo8';
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabaseUrl = 'https://vosmwhlwkbwkczmwmitx.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvc213aGx3a2J3a2N6bXdtaXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjk4MTMsImV4cCI6MjA3Nzk0NTgxM30.fyvgpiYuZHBpsT6X1Zfs1Z_ALxIndnBFW8N5QcU5yo8';
+  const supabase = createClient(supabaseUrl, supabaseKey);
   
-    const root = document.getElementById('appRoot');
-    let adminCarsCache = []; // mémorise les voitures chargées pour pouvoir les éditer
-    let galleryColumnDetected = false;
+  const root = document.getElementById('appRoot');
+  let adminCarsCache = []; // mémorise les voitures chargées pour pouvoir les éditer
+  let galleryColumnDetected = false;
+  let adminFilters = { search: '', status: 'all' };
+  let currentOnEditCallback = null;
   
-    // Vérifie si une session existe déjà
-    async function checkSession() {
-      const { data } = await supabase.auth.getSession();
-      if (data && data.session) {
-        renderAdmin(data.session.user);
+  // Vérifie si une session existe déjà
+  async function checkSession() {
+    const { data } = await supabase.auth.getSession();
+    if (data && data.session) {
+      renderAdmin(data.session.user);
+    } else {
+      renderLogin();
+    }
+  }
+  
+  // Vue de connexion
+  function renderLogin(message = '') {
+    root.innerHTML = `
+      <div class="login-box">
+        <h1>Connexion admin</h1>
+        ${message ? `<div class="alert error">${message}</div>` : ''}
+        <form id="loginForm">
+          <label>Email
+            <input type="email" name="email" required>
+          </label>
+          <label>Mot de passe
+            <input type="password" name="password" required>
+          </label>
+          <button type="submit" class="btn">Se connecter</button>
+        </form>
+      </div>
+    `;
+  
+    const form = document.getElementById('loginForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = form.email.value;
+      const password = form.password.value;
+  
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  
+      if (error) {
+        console.error(error);
+        renderLogin("Identifiants incorrects ou erreur de connexion.");
       } else {
-        renderLogin();
+        renderAdmin(data.user);
       }
-    }
+    });
+  }
   
-    // Vue de connexion
-    function renderLogin(message = '') {
-      root.innerHTML = `
-        <div class="login-box">
-          <h1>Connexion admin</h1>
-          ${message ? `<div class="alert error">${message}</div>` : ''}
-          <form id="loginForm">
-            <label>Email
-              <input type="email" name="email" required>
-            </label>
-            <label>Mot de passe
-              <input type="password" name="password" required>
-            </label>
-            <button type="submit" class="btn">Se connecter</button>
-          </form>
+  // Vue admin (formulaire + liste)
+  function renderAdmin(user) {
+    root.innerHTML = `
+      <main>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h1>Admin — Véhicules</h1>
+          <button id="logoutBtn" class="btn" style="background:#999;">Se déconnecter</button>
         </div>
-      `;
   
-      const form = document.getElementById('loginForm');
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = form.email.value;
-        const password = form.password.value;
+        <div id="msgBox"></div>
+
+        <!-- Dashboard + filtres -->
+        <section class="admin-dashboard" aria-label="Aperçu du stock">
+          <div id="dashboardStats" class="admin-stats-grid">
+            <div class="admin-stat-card">
+              <h3>Total annonces</h3>
+              <strong id="statTotal">0</strong>
+            </div>
+            <div class="admin-stat-card">
+              <h3>En vitrine</h3>
+              <strong id="statAvailable">0</strong>
+            </div>
+            <div class="admin-stat-card">
+              <h3>Vendues</h3>
+              <strong id="statSold">0</strong>
+            </div>
+            <div class="admin-stat-card">
+              <h3>Réservées</h3>
+              <strong id="statReserved">0</strong>
+            </div>
+          </div>
+
+          <div class="admin-filters" role="search" aria-label="Filtrer les annonces">
+            <label for="adminSearch">Rechercher</label>
+            <input type="search" id="adminSearch" name="search" placeholder="Marque, modèle, année..." />
+
+            <label for="statusFilter">Statut</label>
+            <select id="statusFilter" name="status">
+              <option value="all">Tous</option>
+              <option value="available">En vitrine</option>
+              <option value="sold">Vendues</option>
+              <option value="reserved">Réservées</option>
+            </select>
+          </div>
+        </section>
   
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        <form id="carForm">
+          <!-- ID caché pour savoir si on est en mode AJOUT ou MODIF -->
+          <input type="hidden" name="id" />
   
-        if (error) {
-          console.error(error);
-          renderLogin("Identifiants incorrects ou erreur de connexion.");
-        } else {
-          renderAdmin(data.user);
-        }
+          <div class="row">
+            <label>Marque
+              <input type="text" name="marque" required>
+            </label>
+            <label>Modèle
+              <input type="text" name="modele" required>
+            </label>
+            <label>Année
+              <input type="number" name="annee" required>
+            </label>
+            <label>Kilométrage
+              <input type="number" name="kilometrage" required>
+            </label>
+            <label>Prix (€)
+              <input type="number" name="prix" required>
+            </label>
+            <label>Carburant
+              <input type="text" name="carburant" placeholder="Diesel, Essence, Hybride…" required>
+            </label>
+            <label>Boîte
+              <input type="text" name="boite" placeholder="Manuelle, Automatique…" required>
+            </label>
+            <label>Motorisation
+              <input type="text" name="motorisation" placeholder="Ex : 1.5 TSI 150">
+            </label>
+            <label>Nombre de chevaux
+              <input type="number" name="chevaux" placeholder="Ex : 150">
+            </label>
+            <label>Couleur
+              <input type="text" name="couleur">
+            </label>
+            <label>Image du véhicule
+              <input type="file" name="image_file" accept="image/*">
+            </label>
+          </div>
+
+          <label>Description courte
+            <textarea name="description_courte" placeholder="Ex : Première main, entretien suivi..."></textarea>
+          </label>
+
+          <label>Équipements & options
+            <textarea name="options" placeholder="GPS, Caméra de recul, Sellerie cuir..."></textarea>
+          </label>
+
+          <label>Images supplémentaires (galerie)
+            <input type="file" name="gallery_files" accept="image/*" multiple>
+            <span class="hint">Tu peux sélectionner plusieurs fichiers : ils s’ajouteront à la galerie du véhicule.</span>
+          </label>
+          <div id="galleryPreview" class="admin-gallery-preview" aria-live="polite"></div>
+
+          <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+            <button type="submit" id="submitBtn" class="btn">Ajouter le véhicule</button>
+            <button type="button" id="cancelEditBtn" class="btn" style="background:#ddd;display:none;">Annuler la modification</button>
+          </div>
+        </form>
+  
+        <hr style="margin:30px 0;border:none;border-top:1px solid #eee;" />
+  
+        <h2 style="margin-bottom:10px;">Liste des véhicules</h2>
+        <p style="font-size:.9rem;color:#666;margin-top:0;">
+          Tu peux <strong>modifier</strong>, <strong>marquer comme vendu</strong> ou <strong>supprimer</strong> une annonce déjà publiée ✨
+        </p>
+        <div id="adminCars"></div>
+      </main>
+    `;
+  
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      renderLogin();
+    });
+  
+    const form = document.getElementById('carForm');
+    const msgBox = document.getElementById('msgBox');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const galleryPreview = document.getElementById('galleryPreview');
+    const galleryInput = form.querySelector('input[name="gallery_files"]');
+    const searchInput = document.getElementById('adminSearch');
+    const statusFilter = document.getElementById('statusFilter');
+
+    if (searchInput) {
+      searchInput.value = adminFilters.search;
+      searchInput.addEventListener('input', () => {
+        adminFilters.search = searchInput.value;
+        refreshAdminList();
       });
     }
-  
-    // Vue admin (formulaire + liste)
-    function renderAdmin(user) {
-      root.innerHTML = `
-        <main>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <h1>Admin — Véhicules</h1>
-            <button id="logoutBtn" class="btn" style="background:#999;">Se déconnecter</button>
-          </div>
-  
-          <div id="msgBox"></div>
-  
-          <form id="carForm">
-            <!-- ID caché pour savoir si on est en mode AJOUT ou MODIF -->
-            <input type="hidden" name="id" />
-  
-            <div class="row">
-              <label>Marque
-                <input type="text" name="marque" required>
-              </label>
-              <label>Modèle
-                <input type="text" name="modele" required>
-              </label>
-              <label>Année
-                <input type="number" name="annee" required>
-              </label>
-              <label>Kilométrage
-                <input type="number" name="kilometrage" required>
-              </label>
-              <label>Prix (€)
-                <input type="number" name="prix" required>
-              </label>
-              <label>Carburant
-                <input type="text" name="carburant" placeholder="Diesel, Essence, Hybride…" required>
-              </label>
-              <label>Boîte
-                <input type="text" name="boite" placeholder="Manuelle, Automatique…" required>
-              </label>
-              <label>Motorisation
-                <input type="text" name="motorisation" placeholder="Ex : 1.5 TSI 150">
-              </label>
-              <label>Nombre de chevaux
-                <input type="number" name="chevaux" placeholder="Ex : 150">
-              </label>
-              <label>Couleur
-                <input type="text" name="couleur">
-              </label>
-              <label>Image du véhicule
-                <input type="file" name="image_file" accept="image/*">
-              </label>
-            </div>
 
-            <label>Description courte
-              <textarea name="description_courte" placeholder="Ex : Première main, entretien suivi..."></textarea>
-            </label>
-
-            <label>Équipements & options
-              <textarea name="options" placeholder="GPS, Caméra de recul, Sellerie cuir..."></textarea>
-            </label>
-
-            <label>Images supplémentaires (galerie)
-              <input type="file" name="gallery_files" accept="image/*" multiple>
-              <span class="hint">Tu peux sélectionner plusieurs fichiers : ils s’ajouteront à la galerie du véhicule.</span>
-            </label>
-            <div id="galleryPreview" class="admin-gallery-preview" aria-live="polite"></div>
-
-            <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
-              <button type="submit" id="submitBtn" class="btn">Ajouter le véhicule</button>
-              <button type="button" id="cancelEditBtn" class="btn" style="background:#ddd;display:none;">Annuler la modification</button>
-            </div>
-          </form>
-  
-          <hr style="margin:30px 0;border:none;border-top:1px solid #eee;" />
-  
-          <h2 style="margin-bottom:10px;">Liste des véhicules</h2>
-          <p style="font-size:.9rem;color:#666;margin-top:0;">
-            Tu peux <strong>modifier</strong>, <strong>marquer comme vendu</strong> ou <strong>supprimer</strong> une annonce déjà publiée ✨
-          </p>
-          <div id="adminCars"></div>
-        </main>
-      `;
-  
-      document.getElementById('logoutBtn').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        renderLogin();
+    if (statusFilter) {
+      statusFilter.value = adminFilters.status;
+      statusFilter.addEventListener('change', () => {
+        adminFilters.status = statusFilter.value;
+        refreshAdminList();
       });
-  
-      const form = document.getElementById('carForm');
-      const msgBox = document.getElementById('msgBox');
-      const submitBtn = document.getElementById('submitBtn');
-      const cancelEditBtn = document.getElementById('cancelEditBtn');
-      const galleryPreview = document.getElementById('galleryPreview');
-      const galleryInput = form.querySelector('input[name="gallery_files"]');
+    }
 
-      function normalizeGallery(value) {
-        if (!value) return [];
-        if (Array.isArray(value)) return value.filter(Boolean);
-        if (typeof value === 'string') {
-          try {
-            const parsed = JSON.parse(value);
-            if (Array.isArray(parsed)) return parsed.filter(Boolean);
-          } catch (err) {
-            // fallback: split by separators
-          }
-          return value
-            .split(/[\n;,|]+/)
-            .map((s) => s.trim())
-            .filter(Boolean);
+    function refreshAdminList() {
+      renderAdminList(getFilteredCars(), { onEdit: handleEdit });
+    }
+
+    function normalizeGallery(value) {
+      if (!value) return [];
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        } catch (err) {
+          // fallback: split by separators
         }
+        return value
+          .split(/[\n;,|]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+      return [];
+    }
+
+    function getCurrentGallery() {
+      try {
+        const raw = form.dataset.currentGallery || '[]';
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+      } catch (err) {
         return [];
       }
+    }
 
-      function getCurrentGallery() {
-        try {
-          const raw = form.dataset.currentGallery || '[]';
-          const parsed = JSON.parse(raw);
-          return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-        } catch (err) {
-          return [];
-        }
+    function updateGalleryPreview(urls = []) {
+      if (!galleryPreview) return;
+      const safeUrls = Array.isArray(urls) ? urls.filter(Boolean) : [];
+      form.dataset.currentGallery = JSON.stringify(safeUrls);
+
+      if (!safeUrls.length) {
+        galleryPreview.innerHTML = '<p class="hint" style="margin:0;">Aucune image dans la galerie pour le moment.</p>';
+        return;
       }
 
-      function updateGalleryPreview(urls = []) {
-        if (!galleryPreview) return;
-        const safeUrls = Array.isArray(urls) ? urls.filter(Boolean) : [];
-        form.dataset.currentGallery = JSON.stringify(safeUrls);
+      galleryPreview.innerHTML = safeUrls
+        .map((url, index) => `
+          <div class="gallery-chip">
+            <img src="${url}" alt="Photo supplémentaire ${index + 1}">
+            <button type="button" data-remove-gallery="${index}" aria-label="Retirer cette photo">&times;</button>
+          </div>
+        `)
+        .join('');
+    }
 
-        if (!safeUrls.length) {
-          galleryPreview.innerHTML = '<p class="hint" style="margin:0;">Aucune image dans la galerie pour le moment.</p>';
+    if (galleryPreview) {
+      galleryPreview.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-remove-gallery]');
+        if (!btn) return;
+        event.preventDefault();
+        const index = Number(btn.getAttribute('data-remove-gallery'));
+        if (Number.isNaN(index)) return;
+        const urls = getCurrentGallery();
+        urls.splice(index, 1);
+        updateGalleryPreview(urls);
+      });
+    }
+  
+    // ID de la voiture en cours d’édition (ou null si ajout)
+    let editingCarId = null;
+  
+    // pour garder l’ancienne image si on n’en uploade pas une nouvelle
+    form.dataset.currentImageUrl = '';
+  
+    function resetFormMode() {
+      editingCarId = null;
+      form.reset();
+      form.id.value = '';
+      form.dataset.currentImageUrl = '';
+      form.dataset.currentGallery = '[]';
+      submitBtn.textContent = 'Ajouter le véhicule';
+      cancelEditBtn.style.display = 'none';
+      updateGalleryPreview([]);
+    }
+
+    cancelEditBtn.addEventListener('click', () => {
+      resetFormMode();
+    });
+
+    updateGalleryPreview([]);
+  
+    // Soumission formulaire (ajout OU modification)
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msgBox.innerHTML = '';
+  
+      const fileInput = form.querySelector('input[name="image_file"]');
+      const file = fileInput.files[0];
+      const galleryFiles = galleryInput ? Array.from(galleryInput.files || []) : [];
+
+      let galleryUrls = getCurrentGallery();
+      let imageUrl = form.dataset.currentImageUrl || null;
+  
+      // Upload de l'image si on en a sélectionné une nouvelle
+      if (file) {
+        const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const filePath = `vehicules/${fileName}`;
+  
+        const { error: uploadError } = await supabase
+          .storage
+          .from('voitures')
+          .upload(filePath, file);
+  
+        if (uploadError) {
+          console.error(uploadError);
+          msgBox.innerHTML = `<div class="alert error">Erreur lors de l’upload de l’image.</div>`;
           return;
         }
-
-        galleryPreview.innerHTML = safeUrls
-          .map((url, index) => `
-            <div class="gallery-chip">
-              <img src="${url}" alt="Photo supplémentaire ${index + 1}">
-              <button type="button" data-remove-gallery="${index}" aria-label="Retirer cette photo">&times;</button>
-            </div>
-          `)
-          .join('');
+  
+        const { data: publicData } = supabase
+          .storage
+          .from('voitures')
+          .getPublicUrl(filePath);
+  
+        imageUrl = publicData.publicUrl;
       }
 
-      if (galleryPreview) {
-        galleryPreview.addEventListener('click', (event) => {
-          const btn = event.target.closest('[data-remove-gallery]');
-          if (!btn) return;
-          event.preventDefault();
-          const index = Number(btn.getAttribute('data-remove-gallery'));
-          if (Number.isNaN(index)) return;
-          const urls = getCurrentGallery();
-          urls.splice(index, 1);
-          updateGalleryPreview(urls);
-        });
-      }
-  
-      // ID de la voiture en cours d’édition (ou null si ajout)
-      let editingCarId = null;
-  
-      // pour garder l’ancienne image si on n’en uploade pas une nouvelle
-      form.dataset.currentImageUrl = '';
-  
-      function resetFormMode() {
-        editingCarId = null;
-        form.reset();
-        form.id.value = '';
-        form.dataset.currentImageUrl = '';
-        form.dataset.currentGallery = '[]';
-        submitBtn.textContent = 'Ajouter le véhicule';
-        cancelEditBtn.style.display = 'none';
-        updateGalleryPreview([]);
-      }
-
-      cancelEditBtn.addEventListener('click', () => {
-        resetFormMode();
-      });
-
-      updateGalleryPreview([]);
-  
-      // Soumission formulaire (ajout OU modification)
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        msgBox.innerHTML = '';
-  
-        const fileInput = form.querySelector('input[name="image_file"]');
-        const file = fileInput.files[0];
-        const galleryFiles = galleryInput ? Array.from(galleryInput.files || []) : [];
-
-        let galleryUrls = getCurrentGallery();
-
-        let imageUrl = form.dataset.currentImageUrl || null;
-  
-        // Upload de l'image si on en a sélectionné une nouvelle
-        if (file) {
-          const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+      // Upload des images de galerie
+      if (galleryFiles.length) {
+        for (const gf of galleryFiles) {
+          const ext = gf.name.includes('.') ? gf.name.split('.').pop() : 'jpg';
           const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
           const filePath = `vehicules/${fileName}`;
-  
+
           const { error: uploadError } = await supabase
             .storage
             .from('voitures')
-            .upload(filePath, file);
-  
+            .upload(filePath, gf);
+
           if (uploadError) {
             console.error(uploadError);
-            msgBox.innerHTML = `<div class="alert error">Erreur lors de l’upload de l’image.</div>`;
+            msgBox.innerHTML = `<div class="alert error">Erreur lors de l’upload d’une image de galerie.</div>`;
             return;
           }
-  
+
           const { data: publicData } = supabase
             .storage
             .from('voitures')
             .getPublicUrl(filePath);
-  
-          imageUrl = publicData.publicUrl;
-        }
 
-        if (galleryFiles.length) {
-          for (const gf of galleryFiles) {
-            const ext = gf.name.includes('.') ? gf.name.split('.').pop() : 'jpg';
-            const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-            const filePath = `vehicules/${fileName}`;
-
-            const { error: uploadError } = await supabase
-              .storage
-              .from('voitures')
-              .upload(filePath, gf);
-
-            if (uploadError) {
-              console.error(uploadError);
-              msgBox.innerHTML = `<div class="alert error">Erreur lors de l’upload d’une image de galerie.</div>`;
-              return;
-            }
-
-            const { data: publicData } = supabase
-              .storage
-              .from('voitures')
-              .getPublicUrl(filePath);
-
-            if (publicData?.publicUrl) {
-              galleryUrls.push(publicData.publicUrl);
-            }
+          if (publicData?.publicUrl) {
+            galleryUrls.push(publicData.publicUrl);
           }
-
-          updateGalleryPreview(galleryUrls);
-          if (galleryInput) galleryInput.value = '';
         }
 
-        const payload = {
-          marque: form.marque.value.trim(),
-          modele: form.modele.value.trim(),
-          annee: Number(form.annee.value),
-          kilometrage: Number(form.kilometrage.value),
-          prix: Number(form.prix.value),
-          carburant: form.carburant.value.trim(),
-          boite: form.boite.value.trim(),
-          motorisation: form.motorisation.value.trim() || null,
-          chevaux: form.chevaux.value ? Number(form.chevaux.value) : null,
-          couleur: form.couleur.value.trim() || null,
-          image_url: imageUrl,
-          description_courte: form.description_courte.value.trim() || null,
-          options: form.options.value.trim() || null,
-        };
+        updateGalleryPreview(galleryUrls);
+        if (galleryInput) galleryInput.value = '';
+      }
 
-        if (galleryColumnDetected || galleryUrls.length) {
-          payload.gallery_urls = galleryUrls;
-        }
+      const payload = {
+        marque: form.marque.value.trim(),
+        modele: form.modele.value.trim(),
+        annee: Number(form.annee.value),
+        kilometrage: Number(form.kilometrage.value),
+        prix: Number(form.prix.value),
+        carburant: form.carburant.value.trim(),
+        boite: form.boite.value.trim(),
+        motorisation: form.motorisation.value.trim() || null,
+        chevaux: form.chevaux.value ? Number(form.chevaux.value) : null,
+        couleur: form.couleur.value.trim() || null,
+        image_url: imageUrl,
+        description_courte: form.description_courte.value.trim() || null,
+        options: form.options.value.trim() || null,
+      };
 
-        let error;
+      // ✨ IMPORTANT : on n’envoie gallery_urls QUE si la colonne existe vraiment
+      if (galleryColumnDetected) {
+        payload.gallery_urls = galleryUrls;
+      }
+
+      let error;
   
-        if (editingCarId) {
-          // 🔁 MODE MODIFICATION
-          ({ error } = await supabase
-            .from('voitures')
-            .update(payload)
-            .eq('id', editingCarId));
-        } else {
-          // ✨ MODE AJOUT (non vendu par défaut)
-          ({ error } = await supabase
-            .from('voitures')
-            .insert({ ...payload, vendu: false }));
-        }
-  
-        if (error) {
-          console.error(error);
-          msgBox.innerHTML = `<div class="alert error">Erreur lors de l’enregistrement du véhicule.</div>`;
-        } else {
-          msgBox.innerHTML = `<div class="alert success">Véhicule enregistré avec succès ✨</div>`;
-          resetFormMode();
-          loadAdminCars({ onEdit: handleEdit }); // on recharge la liste après ajout/modif
-        }
-      });
-  
-      // Callback appelée quand on clique sur "Modifier" dans la liste
-      function handleEdit(car) {
-        editingCarId = car.id;
-        form.id.value = car.id;
-        form.marque.value = car.marque || '';
-        form.modele.value = car.modele || '';
-        form.annee.value = car.annee || '';
-        form.kilometrage.value = car.kilometrage || '';
-        form.prix.value = car.prix || '';
-        form.carburant.value = car.carburant || '';
-        form.boite.value = car.boite || '';
-        form.motorisation.value = car.motorisation || '';
-        form.chevaux.value = car.chevaux || '';
-        form.couleur.value = car.couleur || '';
-        form.description_courte.value = car.description_courte || '';
-        form.options.value = car.options || '';
-        form.dataset.currentImageUrl = car.image_url || '';
-        updateGalleryPreview(normalizeGallery(car.gallery_urls));
-
-        submitBtn.textContent = 'Mettre à jour le véhicule';
-        cancelEditBtn.style.display = 'inline-block';
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (editingCarId) {
+        // 🔁 MODE MODIFICATION
+        ({ error } = await supabase
+          .from('voitures')
+          .update(payload)
+          .eq('id', editingCarId));
+      } else {
+        // ✨ MODE AJOUT (non vendu par défaut)
+        ({ error } = await supabase
+          .from('voitures')
+          .insert({ ...payload, vendu: false }));
       }
   
-      // Premier chargement de la liste
-      loadAdminCars({ onEdit: handleEdit });
-    }
-  
-    // Charge la liste des véhicules pour l’admin
-    async function loadAdminCars({ onEdit } = {}) {
-      const container = document.getElementById('adminCars');
-      if (!container) return;
-  
-      const { data, error } = await supabase
-        .from('voitures')
-        .select('*')
-        .order('created_at', { ascending: false });
-
       if (error) {
         console.error(error);
-        container.innerHTML = '<p>Erreur lors du chargement des véhicules.</p>';
-        return;
+        msgBox.innerHTML = `<div class="alert error">Erreur lors de l’enregistrement du véhicule.</div>`;
+      } else {
+        msgBox.innerHTML = `<div class="alert success">Véhicule enregistré avec succès ✨</div>`;
+        resetFormMode();
+        loadAdminCars({ onEdit: handleEdit }); // on recharge la liste après ajout/modif
+      }
+    });
+  
+    // Callback appelée quand on clique sur "Modifier" dans la liste
+    function handleEdit(car) {
+      editingCarId = car.id;
+      form.id.value = car.id;
+      form.marque.value = car.marque || '';
+      form.modele.value = car.modele || '';
+      form.annee.value = car.annee || '';
+      form.kilometrage.value = car.kilometrage || '';
+      form.prix.value = car.prix || '';
+      form.carburant.value = car.carburant || '';
+      form.boite.value = car.boite || '';
+      form.motorisation.value = car.motorisation || '';
+      form.chevaux.value = car.chevaux || '';
+      form.couleur.value = car.couleur || '';
+      form.description_courte.value = car.description_courte || '';
+      form.options.value = car.options || '';
+      form.dataset.currentImageUrl = car.image_url || '';
+      updateGalleryPreview(normalizeGallery(car.gallery_urls));
+
+      submitBtn.textContent = 'Mettre à jour le véhicule';
+      cancelEditBtn.style.display = 'inline-block';
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  
+    // Premier chargement de la liste
+    loadAdminCars({ onEdit: handleEdit });
+  }
+
+  // Helpers de statut
+  function isReserved(car = {}) {
+    if (!car || typeof car !== 'object') return false;
+    if (typeof car.reserve === 'boolean') return car.reserve;
+    if (typeof car.reserved === 'boolean') return car.reserved;
+    const status = car.status || car.statut;
+    if (typeof status === 'string') {
+      const normalized = status.toLowerCase();
+      return normalized.includes('reserv');
+    }
+    return false;
+  }
+
+  function updateDashboardStats(cars = []) {
+    const total = cars.length;
+    const sold = cars.filter((car) => car.vendu).length;
+    const reserved = cars.filter((car) => isReserved(car)).length;
+    const available = cars.filter((car) => !car.vendu && !isReserved(car)).length;
+
+    const totalEl = document.getElementById('statTotal');
+    const availableEl = document.getElementById('statAvailable');
+    const soldEl = document.getElementById('statSold');
+    const reservedEl = document.getElementById('statReserved');
+
+    if (totalEl) totalEl.textContent = total;
+    if (availableEl) availableEl.textContent = available;
+    if (soldEl) soldEl.textContent = sold;
+    if (reservedEl) reservedEl.textContent = reserved;
+  }
+
+  function getFilteredCars() {
+    const search = adminFilters.search ? adminFilters.search.trim().toLowerCase() : '';
+    const status = adminFilters.status;
+
+    return adminCarsCache.filter((car) => {
+      let matchesSearch = true;
+      if (search) {
+        const haystack = [
+          car.marque,
+          car.modele,
+          car.annee,
+          car.kilometrage,
+          car.motorisation,
+          car.carburant,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        matchesSearch = haystack.includes(search);
       }
 
-      adminCarsCache = data || [];
-      galleryColumnDetected = (data || []).some((v) => Object.prototype.hasOwnProperty.call(v, 'gallery_urls'));
-  
-      if (!data || data.length === 0) {
-        container.innerHTML = '<p>Aucun véhicule enregistré pour le moment.</p>';
-        return;
+      if (!matchesSearch) return false;
+
+      if (status === 'available') {
+        return !car.vendu && !isReserved(car);
       }
-  
-      container.innerHTML = '';
-  
-      data.forEach((v) => {
-        const div = document.createElement('div');
-        div.style.padding = '10px 12px';
-        div.style.border = '1px solid #eee';
-        div.style.borderRadius = '10px';
-        div.style.marginBottom = '8px';
-        div.style.display = 'flex';
-        div.style.justifyContent = 'space-between';
-        div.style.alignItems = 'center';
-        div.style.gap = '10px';
-  
-        div.innerHTML = `
-          <div style="flex:1;">
-            <strong>${v.marque} ${v.modele}</strong>
-            <span style="color:#777;font-size:.9rem;">
-              • ${v.annee} • ${Number(v.kilometrage).toLocaleString('fr-FR')} km
-            </span>
-            ${
-              v.motorisation || v.chevaux
-                ? `<div style="font-size:.85rem;color:#555;margin-top:4px;">
-                    ${v.motorisation ? `${v.motorisation}` : ''}
-                    ${v.motorisation && v.chevaux ? ' • ' : ''}
-                    ${v.chevaux ? `${v.chevaux} ch` : ''}
-                  </div>`
-                : ''
-            }
-            ${v.vendu ? '<span style="margin-left:8px;padding:2px 8px;border-radius:999px;background:#fce4e4;color:#b30000;font-size:.8rem;">Vendu</span>' : ''}
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button
-              class="btn"
-              style="padding:6px 10px;font-size:.8rem;background:#607D8B;"
-              data-action="edit"
-              data-id="${v.id}"
-            >
-              Modifier
-            </button>
-            <button
-              class="btn"
-              style="padding:6px 10px;font-size:.8rem;${v.vendu ? 'background:#4caf50;' : 'background:#bfa16a;'}"
-              data-action="toggle-sold"
-              data-id="${v.id}"
-            >
-              ${v.vendu ? 'Remettre en vente' : 'Marquer comme vendu'}
-            </button>
-            <button
-              class="btn"
-              style="padding:6px 10px;font-size:.8rem;background:#c62828;"
-              data-action="delete"
-              data-id="${v.id}"
-            >
-              Supprimer
-            </button>
-          </div>
-        `;
-  
-        container.appendChild(div);
-      });
-  
-      // Bouton Modifier
-      if (onEdit) {
-        container.querySelectorAll('button[data-action="edit"]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const id = btn.getAttribute('data-id');
-            const car = adminCarsCache.find((c) => String(c.id) === String(id));
-            if (car) onEdit(car);
-          });
-        });
+      if (status === 'sold') {
+        return !!car.vendu;
       }
-  
-      // Bouton Marquer comme vendu / Remettre en vente
-      container.querySelectorAll('button[data-action="toggle-sold"]').forEach((btn) => {
-        btn.addEventListener('click', async () => {
+      if (status === 'reserved') {
+        return isReserved(car);
+      }
+
+      return true;
+    });
+  }
+
+  function renderAdminList(cars = [], { onEdit } = {}) {
+    const container = document.getElementById('adminCars');
+    if (!container) return;
+
+    currentOnEditCallback = onEdit || currentOnEditCallback;
+    const editCallback = currentOnEditCallback;
+
+    if (!adminCarsCache.length) {
+      container.innerHTML = '<p>Aucun véhicule enregistré pour le moment.</p>';
+      return;
+    }
+
+    if (!cars.length) {
+      container.innerHTML = '<p>Aucun véhicule ne correspond à vos filtres pour le moment.</p>';
+      return;
+    }
+
+    container.innerHTML = '';
+
+    cars.forEach((v) => {
+      const div = document.createElement('div');
+      div.style.padding = '10px 12px';
+      div.style.border = '1px solid #eee';
+      div.style.borderRadius = '10px';
+      div.style.marginBottom = '8px';
+      div.style.display = 'flex';
+      div.style.justifyContent = 'space-between';
+      div.style.alignItems = 'center';
+      div.style.gap = '10px';
+
+      const badges = [];
+      if (v.vendu) {
+        badges.push('<span style="margin-left:8px;padding:2px 8px;border-radius:999px;background:#fce4e4;color:#b30000;font-size:.8rem;">Vendu</span>');
+      }
+      if (isReserved(v)) {
+        badges.push('<span style="margin-left:8px;padding:2px 8px;border-radius:999px;background:#fff4d8;color:#bfa16a;font-size:.8rem;">Réservé</span>');
+      }
+
+      div.innerHTML = `
+        <div style="flex:1;">
+          <strong>${v.marque} ${v.modele}</strong>
+          <span style="color:#777;font-size:.9rem;">
+            • ${v.annee} • ${Number(v.kilometrage).toLocaleString('fr-FR')} km
+          </span>
+          ${
+            v.motorisation || v.chevaux
+              ? `<div style="font-size:.85rem;color:#555;margin-top:4px;">
+                  ${v.motorisation ? `${v.motorisation}` : ''}
+                  ${v.motorisation && v.chevaux ? ' • ' : ''}
+                  ${v.chevaux ? `${v.chevaux} ch` : ''}
+                </div>`
+              : ''
+          }
+          ${badges.join(' ')}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button
+            class="btn"
+            style="padding:6px 10px;font-size:.8rem;background:#607D8B;"
+            data-action="edit"
+            data-id="${v.id}"
+          >
+            Modifier
+          </button>
+          <button
+            class="btn"
+            style="padding:6px 10px;font-size:.8rem;${v.vendu ? 'background:#4caf50;' : 'background:#bfa16a;'}"
+            data-action="toggle-sold"
+            data-id="${v.id}"
+          >
+            ${v.vendu ? 'Remettre en vente' : 'Marquer comme vendu'}
+          </button>
+          <button
+            class="btn"
+            style="padding:6px 10px;font-size:.8rem;background:#c62828;"
+            data-action="delete"
+            data-id="${v.id}"
+          >
+            Supprimer
+          </button>
+        </div>
+      `;
+
+      container.appendChild(div);
+    });
+
+    if (editCallback) {
+      container.querySelectorAll('button[data-action="edit"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
           const id = btn.getAttribute('data-id');
           const car = adminCarsCache.find((c) => String(c.id) === String(id));
-          if (!car) return;
-          await setCarSold(id, !car.vendu);
-        });
-      });
-  
-      // Bouton Supprimer
-      container.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          const id = btn.getAttribute('data-id');
-          if (confirm('Supprimer définitivement ce véhicule ?')) {
-            await deleteCar(id);
-          }
+          if (car) editCallback(car);
         });
       });
     }
+
+    container.querySelectorAll('button[data-action="toggle-sold"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const car = adminCarsCache.find((c) => String(c.id) === String(id));
+        if (!car) return;
+        await setCarSold(id, !car.vendu);
+      });
+    });
+
+    container.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (confirm('Supprimer définitivement ce véhicule ?')) {
+          await deleteCar(id);
+        }
+      });
+    });
+  }
   
-    // Met à jour le statut vendu
-    async function setCarSold(id, isSold) {
-      const { error } = await supabase
-        .from('voitures')
-        .update({ vendu: isSold })
-        .eq('id', id);
+  // Charge la liste des véhicules pour l’admin
+  async function loadAdminCars({ onEdit } = {}) {
+    const container = document.getElementById('adminCars');
+    if (!container) return;
   
-      if (error) {
-        alert("Erreur lors de la mise à jour du statut.");
-        console.error(error);
-      } else {
-        loadAdminCars(); // pas besoin de callback ici, juste refresh visuel
-      }
+    const { data, error } = await supabase
+      .from('voitures')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(error);
+      container.innerHTML = '<p>Erreur lors du chargement des véhicules.</p>';
+      return;
     }
-  
-    // Supprime un véhicule
-    async function deleteCar(id) {
-      const { error } = await supabase
-        .from('voitures')
-        .delete()
-        .eq('id', id);
-  
-      if (error) {
-        alert("Erreur lors de la suppression.");
-        console.error(error);
-      } else {
-        loadAdminCars();
-      }
+
+    adminCarsCache = data || [];
+    galleryColumnDetected = (data || []).some((v) => Object.prototype.hasOwnProperty.call(v, 'gallery_urls'));
+    currentOnEditCallback = onEdit || currentOnEditCallback;
+
+    if (!adminCarsCache.length) {
+      updateDashboardStats([]);
+      container.innerHTML = '<p>Aucun véhicule enregistré pour le moment.</p>';
+      return;
     }
+
+    updateDashboardStats(adminCarsCache);
+    renderAdminList(getFilteredCars(), { onEdit: currentOnEditCallback });
+  }
   
-    // Lancement
-    checkSession();
-  </script>
+  // Met à jour le statut vendu
+  async function setCarSold(id, isSold) {
+    const { error } = await supabase
+      .from('voitures')
+      .update({ vendu: isSold })
+      .eq('id', id);
   
+    if (error) {
+      alert("Erreur lors de la mise à jour du statut.");
+      console.error(error);
+    } else {
+      loadAdminCars(); // pas besoin de callback ici, juste refresh visuel
+    }
+  }
+  
+  // Supprime un véhicule
+  async function deleteCar(id) {
+    const { error } = await supabase
+      .from('voitures')
+      .delete()
+      .eq('id', id);
+  
+    if (error) {
+      alert("Erreur lors de la suppression.");
+      console.error(error);
+    } else {
+      loadAdminCars();
+    }
+  }
+  
+  // Lancement
+  checkSession();
+</script>
+</body>
+</html>
