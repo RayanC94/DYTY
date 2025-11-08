@@ -44,12 +44,44 @@
 
   <!-- CONTACT -->
   <footer id="contact" class="footer">
+    <div class="container contact-wrapper">
+      <div class="contact-info">
+        <h2>Contact</h2>
+        <p>
+          Besoin d’un renseignement&nbsp;? Nous sommes à votre écoute par téléphone ou par email.
+        </p>
+        <ul>
+          <li><strong>Tél :</strong> <a href="tel:+33123456789">01&nbsp;23&nbsp;45&nbsp;67&nbsp;89</a></li>
+          <li><strong>Email :</strong> <a href="mailto:contact@dyty-auto.fr">contact@dyty-auto.fr</a></li>
+        </ul>
+      </div>
+
+      <form class="contact-form" action="mailto:contact@dyty-auto.fr" method="post" enctype="text/plain">
+        <h3>Être recontacté</h3>
+        <div class="contact-form-row">
+          <label for="contact-lastname">Nom</label>
+          <input id="contact-lastname" name="Nom" type="text" placeholder="Dupont" required>
+        </div>
+        <div class="contact-form-row">
+          <label for="contact-firstname">Prénom</label>
+          <input id="contact-firstname" name="Prénom" type="text" placeholder="Jean" required>
+        </div>
+        <div class="contact-form-row">
+          <label for="contact-email">Email</label>
+          <input id="contact-email" name="Email" type="email" placeholder="jean.dupont@email.fr" required>
+        </div>
+        <div class="contact-form-row">
+          <label for="contact-phone">Téléphone</label>
+          <input id="contact-phone" name="Téléphone" type="tel" placeholder="06 12 34 56 78" required>
+        </div>
+        <div class="contact-form-row">
+          <label for="contact-time">Horaire souhaité</label>
+          <input id="contact-time" name="Horaire souhaité" type="text" placeholder="Ex. : Lundi 14h-16h" required>
+        </div>
+        <button class="btn-gold" type="submit">Envoyer ma demande</button>
+      </form>
+    </div>
     <div class="container">
-      <h2>Contact</h2>
-      <p>
-        <strong>Tél :</strong> <a href="tel:+33123456789">01 23 45 67 89</a> •
-        <strong>Email :</strong> <a href="mailto:contact@dyty-auto.fr">contact@dyty-auto.fr</a>
-      </p>
       <p class="copyright">© 2025 Dyty Automobile — Tous droits réservés.</p>
     </div>
   </footer>
