@@ -33,6 +33,24 @@
     .admin-filters label{margin:0;font-size:.85rem;color:#444}
     .admin-filters input,.admin-filters select{width:auto;min-width:180px;padding:8px 12px;border-radius:999px;border:1px solid #d6d6d6;background:#fff;font:inherit}
     .admin-filters input{flex:1;min-width:220px}
+    .admin-stat-sub{display:block;margin-top:4px;font-size:.8rem;color:#6b6b6b}
+    .admin-contacts{display:flex;flex-direction:column;gap:12px;margin-top:30px;padding:20px;border:1px solid #ececec;border-radius:12px;background:#faf9f6}
+    .admin-contacts-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .admin-contacts-hint{margin:0;color:#555;font-size:.9rem}
+    .admin-contacts-loading{padding:12px;border-radius:10px;background:#fff;border:1px dashed #d6d6d6;color:#7a6a49;font-weight:600;font-size:.9rem}
+    .admin-contacts-empty{margin:0;color:#777;font-size:.9rem}
+    .admin-contact-list{display:flex;flex-direction:column;gap:10px}
+    .admin-contact-card{border:1px solid #e3e3e3;border-radius:12px;padding:14px;background:#fff;display:flex;flex-direction:column;gap:8px}
+    .admin-contact-card header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    .admin-contact-card h3{margin:0;font-size:1rem;color:#2d2a26}
+    .admin-contact-meta{margin:0;font-size:.85rem;color:#777}
+    .admin-contact-body{display:grid;gap:6px;font-size:.9rem;color:#444}
+    .admin-contact-body a{color:#607D8B;text-decoration:none}
+    .admin-contact-body a:hover{text-decoration:underline}
+    .admin-contact-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .admin-contact-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.75rem;font-weight:600}
+    .admin-contact-badge.pending{background:#fff4d8;color:#b3842c}
+    .admin-contact-badge.processed{background:#e7f8ea;color:#116b2b}
   </style>
 </head>
 <body>
@@ -61,6 +79,7 @@
   let galleryColumnDetected = false;
   let adminFilters = { search: '', status: 'all' };
   let currentOnEditCallback = null;
+  let contactRequestsCache = [];
   
   // Vérifie si une session existe déjà
   async function checkSession() {
@@ -106,7 +125,33 @@
       }
     });
   }
-  
+
+  function escapeHtml(value = '') {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatContactDate(value) {
+    if (!value) return '';
+    try {
+      const date = new Date(value);
+      return date.toLocaleString('fr-FR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      });
+    } catch (err) {
+      return String(value);
+    }
+  }
+
+  function formatPhoneHref(value = '') {
+    return `tel:${String(value).replace(/[^+\d]/g, '')}`;
+  }
+
   // Vue admin (formulaire + liste)
   function renderAdmin(user) {
     root.innerHTML = `
@@ -136,6 +181,11 @@
             <div class="admin-stat-card">
               <h3>Réservées</h3>
               <strong id="statReserved">0</strong>
+            </div>
+            <div class="admin-stat-card">
+              <h3>Demandes contact</h3>
+              <strong id="statContacts">0</strong>
+              <span class="admin-stat-sub" id="statContactsTotal">Total 0</span>
             </div>
           </div>
 
@@ -220,6 +270,18 @@
           Tu peux <strong>modifier</strong>, <strong>marquer comme vendu</strong> ou <strong>supprimer</strong> une annonce déjà publiée ✨
         </p>
         <div id="adminCars"></div>
+
+        <section class="admin-contacts" aria-labelledby="contactRequestsTitle">
+          <div class="admin-contacts-header">
+            <h2 id="contactRequestsTitle">Demandes de contact</h2>
+            <button type="button" id="refreshContactsBtn" class="btn" style="background:#607D8B;">Actualiser</button>
+          </div>
+          <p class="admin-contacts-hint">Dernières demandes reçues via le formulaire du site.</p>
+          <div id="contactsError" class="alert error" hidden></div>
+          <div id="contactsLoading" class="admin-contacts-loading" hidden>Chargement des demandes…</div>
+          <div id="adminContacts" class="admin-contact-list" role="list"></div>
+          <p id="contactsEmpty" class="admin-contacts-empty" hidden>Aucune demande pour le moment.</p>
+        </section>
       </main>
     `;
   
@@ -236,6 +298,8 @@
     const galleryInput = form.querySelector('input[name="gallery_files"]');
     const searchInput = document.getElementById('adminSearch');
     const statusFilter = document.getElementById('statusFilter');
+    const refreshContactsBtn = document.getElementById('refreshContactsBtn');
+    const contactList = document.getElementById('adminContacts');
 
     if (searchInput) {
       searchInput.value = adminFilters.search;
@@ -250,6 +314,43 @@
       statusFilter.addEventListener('change', () => {
         adminFilters.status = statusFilter.value;
         refreshAdminList();
+      });
+    }
+
+    if (refreshContactsBtn) {
+      refreshContactsBtn.addEventListener('click', () => {
+        loadContacts({ showLoader: true });
+      });
+    }
+
+    if (contactList) {
+      contactList.addEventListener('click', async (event) => {
+        const btn = event.target.closest('[data-contact-toggle]');
+        if (!btn) return;
+
+        const id = btn.getAttribute('data-contact-toggle');
+        const processed = btn.getAttribute('data-processed') === 'true';
+
+        btn.disabled = true;
+        const originalText = btn.dataset.originalText || btn.textContent;
+        btn.dataset.originalText = originalText;
+        btn.textContent = 'Mise à jour…';
+
+        const { error } = await supabase
+          .from('contacts')
+          .update({ processed: !processed })
+          .eq('id', id);
+
+        if (error) {
+          console.error(error);
+          showContactsError("Impossible de mettre à jour la demande.");
+          btn.disabled = false;
+          btn.textContent = originalText;
+          return;
+        }
+
+        showContactsError('');
+        await loadContacts({ showLoader: false });
       });
     }
 
@@ -483,6 +584,105 @@
   
     // Premier chargement de la liste
     loadAdminCars({ onEdit: handleEdit });
+    loadContacts();
+  }
+
+  function showContactsError(message = '') {
+    const errorEl = document.getElementById('contactsError');
+    if (!errorEl) return;
+    if (!message) {
+      errorEl.hidden = true;
+      errorEl.textContent = '';
+    } else {
+      errorEl.hidden = false;
+      errorEl.textContent = message;
+    }
+  }
+
+  function updateContactStats() {
+    const pending = contactRequestsCache.filter((item) => !item.processed).length;
+    const total = contactRequestsCache.length;
+    const pendingEl = document.getElementById('statContacts');
+    const totalEl = document.getElementById('statContactsTotal');
+
+    if (pendingEl) pendingEl.textContent = pending;
+    if (totalEl) totalEl.textContent = `Total ${total}`;
+  }
+
+  function renderContactList(requests = []) {
+    const list = document.getElementById('adminContacts');
+    const emptyEl = document.getElementById('contactsEmpty');
+    if (!list) return;
+
+    list.innerHTML = '';
+
+    if (!requests.length) {
+      if (emptyEl) emptyEl.hidden = false;
+      return;
+    }
+
+    if (emptyEl) emptyEl.hidden = true;
+
+    requests.forEach((request) => {
+      const card = document.createElement('article');
+      card.className = 'admin-contact-card';
+      card.setAttribute('role', 'listitem');
+
+      const badgeClass = request.processed ? 'processed' : 'pending';
+      const badgeLabel = request.processed ? 'Traitée' : 'À rappeler';
+      const toggleLabel = request.processed ? 'Marquer à rappeler' : 'Marquer comme traitée';
+      const buttonColor = request.processed ? '#607D8B' : '#2e7d32';
+
+      card.innerHTML = `
+        <header>
+          <div>
+            <h3>${escapeHtml(`${request.firstname || ''} ${request.lastname || ''}`.trim() || 'Contact')}</h3>
+            <p class="admin-contact-meta">Reçu le ${escapeHtml(formatContactDate(request.created_at))}</p>
+          </div>
+          <span class="admin-contact-badge ${badgeClass}">${badgeLabel}</span>
+        </header>
+        <div class="admin-contact-body">
+          <span>Email : <a href="mailto:${escapeHtml(request.email || '')}">${escapeHtml(request.email || '')}</a></span>
+          <span>Téléphone : <a href="${formatPhoneHref(request.phone || '')}">${escapeHtml(request.phone || '')}</a></span>
+          ${request.preferred_time ? `<span>Créneau souhaité : ${escapeHtml(request.preferred_time)}</span>` : ''}
+        </div>
+        <div class="admin-contact-actions">
+          <button type="button" class="btn" data-contact-toggle="${request.id}" data-processed="${request.processed ? 'true' : 'false'}" style="background:${buttonColor};">${toggleLabel}</button>
+        </div>
+      `;
+
+      list.appendChild(card);
+    });
+  }
+
+  async function loadContacts({ showLoader = true } = {}) {
+    const loadingEl = document.getElementById('contactsLoading');
+    const emptyEl = document.getElementById('contactsEmpty');
+
+    if (loadingEl) loadingEl.hidden = !showLoader ? true : false;
+    if (emptyEl) emptyEl.hidden = true;
+    showContactsError('');
+
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('*')
+      .order('processed', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (loadingEl) loadingEl.hidden = true;
+
+    if (error) {
+      console.error(error);
+      showContactsError("Impossible de récupérer les demandes de contact.");
+      contactRequestsCache = [];
+      renderContactList([]);
+      updateContactStats();
+      return;
+    }
+
+    contactRequestsCache = Array.isArray(data) ? data : [];
+    renderContactList(contactRequestsCache);
+    updateContactStats();
   }
 
   // Helpers de statut

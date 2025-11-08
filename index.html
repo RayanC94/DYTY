@@ -8,42 +8,90 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <a class="skip-link" href="#contenu">Aller au contenu principal</a>
+
   <!-- Header -->
-  <header class="header">
+  <header class="header" role="banner">
     <div class="container header-inner">
       <a class="logo" href="#accueil">Dyty Automobile</a>
-      <nav class="nav">
+      <nav class="nav" aria-label="Navigation principale">
         <a href="#stock">Véhicules</a>
         <a href="#contact" class="btn-gold">Contact</a>
       </nav>
     </div>
   </header>
 
-  <!-- HERO simple et doré -->
-  <section id="accueil" class="hero">
-    <div class="container hero-content">
-      <h1 class="hero-title">Dyty Automobile</h1>
-      <p class="hero-subtitle">Votre confiance, notre moteur.</p>
-    </div>
-  </section>
-
-  <!-- STOCK -->
-  <section id="stock" class="stock">
-    <div class="container">
-      <h2>Nos véhicules disponibles</h2>
-
-      <div id="vehicleGrid" class="vehicle-grid">
-        <!-- Les cartes voitures seront injectées ici -->
+  <main id="contenu">
+    <!-- HERO simple et doré -->
+    <section id="accueil" class="hero" aria-labelledby="hero-title">
+      <div class="container hero-content">
+        <div class="hero-text">
+          <p class="hero-tag">Véhicules d’occasion sélectionnés avec soin</p>
+          <h1 id="hero-title" class="hero-title">Dyty Automobile</h1>
+          <p class="hero-subtitle">
+            Des voitures fiables, préparées et prêtes à prendre la route. Découvrez notre sélection et parlons de votre prochain véhicule.
+          </p>
+          <div class="hero-cta" role="group" aria-label="Accès rapide">
+            <a class="btn-gold" href="#stock">Voir le stock</a>
+            <a class="btn-outline" href="#contact">Nous contacter</a>
+          </div>
+        </div>
+        <div class="hero-card" aria-label="Informations Dyty Automobile">
+          <p class="hero-card-title">Votre partenaire auto de confiance</p>
+          <ul>
+            <li>Historique transparent</li>
+            <li>Contrôle qualité complet</li>
+            <li>Accompagnement administratif</li>
+          </ul>
+        </div>
       </div>
+    </section>
+<<<<<<< ours
 
-      <p id="noCarsMsg" style="margin-top:20px; display:none;">
-        Aucun véhicule disponible pour le moment.
-      </p>
-    </div>
-  </section>
+    <!-- STOCK -->
+    <section id="stock" class="stock" aria-labelledby="stock-title">
+      <div class="container">
+        <div class="stock-header">
+          <h2 id="stock-title">Nos véhicules disponibles</h2>
+          <p class="stock-lead">Mise à jour en temps réel depuis notre stock.</p>
+        </div>
+
+        <div id="vehicleLoading" class="vehicle-loading" role="status" aria-live="polite">
+          Chargement des véhicules en cours…
+        </div>
+
+        <div id="vehicleGrid" class="vehicle-grid" aria-live="polite" aria-busy="true">
+          <!-- Les cartes voitures seront injectées ici -->
+        </div>
+
+=======
+
+    <!-- STOCK -->
+    <section id="stock" class="stock" aria-labelledby="stock-title">
+      <div class="container">
+        <div class="stock-header">
+          <h2 id="stock-title">Nos véhicules disponibles</h2>
+          <p class="stock-lead">Mise à jour en temps réel depuis notre stock.</p>
+        </div>
+
+        <div id="vehicleLoading" class="vehicle-loading" role="status" aria-live="polite">
+          Chargement des véhicules en cours…
+        </div>
+
+        <div id="vehicleGrid" class="vehicle-grid" aria-live="polite" aria-busy="true">
+          <!-- Les cartes voitures seront injectées ici -->
+        </div>
+
+>>>>>>> theirs
+        <p id="noCarsMsg" class="vehicle-empty" hidden aria-live="polite">
+          Aucun véhicule disponible pour le moment. Contactez-nous pour être informé des prochaines arrivées.
+        </p>
+      </div>
+    </section>
+  </main>
 
   <!-- CONTACT -->
-  <footer id="contact" class="footer">
+  <footer id="contact" class="footer" role="contentinfo">
     <div class="container contact-wrapper">
       <div class="contact-info">
         <h2>Contact</h2>
@@ -54,31 +102,42 @@
           <li><strong>Tél :</strong> <a href="tel:+33123456789">01&nbsp;23&nbsp;45&nbsp;67&nbsp;89</a></li>
           <li><strong>Email :</strong> <a href="mailto:contact@dyty-auto.fr">contact@dyty-auto.fr</a></li>
         </ul>
+        <address>
+          15 avenue des Automobiles<br>
+          75000 Paris — France
+        </address>
+        <p class="contact-hours"><strong>Horaires :</strong> lundi - samedi, 9h00 à 19h00</p>
       </div>
 
-      <form class="contact-form" action="mailto:contact@dyty-auto.fr" method="post" enctype="text/plain">
+<<<<<<< ours
+      <form class="contact-form" action="mailto:contact@dyty-auto.fr" method="post" enctype="text/plain" aria-describedby="contact-help">
+=======
+      <form id="contactForm" class="contact-form" novalidate aria-describedby="contact-help contactFeedback">
+>>>>>>> theirs
         <h3>Être recontacté</h3>
+        <p id="contact-help" class="contact-help">Complétez ce formulaire et un conseiller vous rappelle sous 24&nbsp;heures.</p>
         <div class="contact-form-row">
           <label for="contact-lastname">Nom</label>
-          <input id="contact-lastname" name="Nom" type="text" placeholder="Dupont" required>
+          <input id="contact-lastname" name="lastname" type="text" placeholder="Dupont" autocomplete="family-name" required>
         </div>
         <div class="contact-form-row">
           <label for="contact-firstname">Prénom</label>
-          <input id="contact-firstname" name="Prénom" type="text" placeholder="Jean" required>
+          <input id="contact-firstname" name="firstname" type="text" placeholder="Jean" autocomplete="given-name" required>
         </div>
         <div class="contact-form-row">
           <label for="contact-email">Email</label>
-          <input id="contact-email" name="Email" type="email" placeholder="jean.dupont@email.fr" required>
+          <input id="contact-email" name="email" type="email" placeholder="jean.dupont@email.fr" autocomplete="email" required>
         </div>
         <div class="contact-form-row">
           <label for="contact-phone">Téléphone</label>
-          <input id="contact-phone" name="Téléphone" type="tel" placeholder="06 12 34 56 78" required>
+          <input id="contact-phone" name="phone" type="tel" placeholder="06 12 34 56 78" autocomplete="tel" required>
         </div>
         <div class="contact-form-row">
           <label for="contact-time">Horaire souhaité</label>
-          <input id="contact-time" name="Horaire souhaité" type="text" placeholder="Ex. : Lundi 14h-16h" required>
+          <input id="contact-time" name="preferred_time" type="text" placeholder="Ex. : Lundi 14h-16h">
         </div>
-        <button class="btn-gold" type="submit">Envoyer ma demande</button>
+        <p id="contactFeedback" class="contact-feedback" role="status" aria-live="polite"></p>
+        <button id="contactSubmit" class="btn-gold" type="submit">Envoyer ma demande</button>
       </form>
     </div>
     <div class="container">
@@ -93,35 +152,50 @@
     const supabaseUrl = 'https://vosmwhlwkbwkczmwmitx.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvc213aGx3a2J3a2N6bXdtaXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjk4MTMsImV4cCI6MjA3Nzk0NTgxM30.fyvgpiYuZHBpsT6X1Zfs1Z_ALxIndnBFW8N5QcU5yo8';
     const supabase = createClient(supabaseUrl, supabaseKey);
-   
+
     async function loadCars () {
       const grid = document.getElementById('vehicleGrid');
       const emptyMsg = document.getElementById('noCarsMsg');
+      const loading = document.getElementById('vehicleLoading');
 
-      const { data, error } = await supabase
-        .from('voitures')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        grid.setAttribute('aria-busy', 'true');
+        if (loading) {
+          loading.hidden = false;
+        }
+        if (emptyMsg) {
+          emptyMsg.hidden = true;
+        }
 
-      if (error) {
-        console.error(error);
-        grid.innerHTML = '<p>Erreur lors du chargement des véhicules.</p>';
-        return;
-      }
+        const { data, error } = await supabase
+          .from('voitures')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (!data || data.length === 0) {
-        emptyMsg.style.display = 'block';
-        return;
-      }
+        if (error) {
+          throw error;
+        }
 
-      grid.innerHTML = '';
-      for (const v of data) {
-        const card = document.createElement('article');
-        card.className = 'car-card';
+        grid.innerHTML = '';
+        grid.setAttribute('aria-busy', 'false');
+        if (loading) {
+          loading.hidden = true;
+        }
 
-        const href = `details.html?id=${encodeURIComponent(v.id)}`;
+        if (!data || data.length === 0) {
+          emptyMsg.hidden = false;
+          return;
+        }
 
-        card.innerHTML = `
+        emptyMsg.hidden = true;
+
+        for (const v of data) {
+          const card = document.createElement('article');
+          card.className = 'car-card';
+
+          const href = `details.html?id=${encodeURIComponent(v.id)}`;
+
+          card.innerHTML = `
       <a class="card-link" href="${href}">
         ${v.vendu ? '<div class="badge-vendu">Vendu</div>' : ''}
         <img src="${v.image_url ? v.image_url : 'placeholder.jpg'}"
@@ -147,11 +221,85 @@
       </a>
     `;
 
-        grid.appendChild(card);
+          grid.appendChild(card);
+        }
+      } catch (err) {
+        console.error(err);
+        if (loading) {
+          loading.hidden = true;
+        }
+        grid.setAttribute('aria-busy', 'false');
+        grid.innerHTML = '<p class="vehicle-error">Erreur lors du chargement des véhicules. Réessayez dans quelques instants.</p>';
       }
     }
 
     loadCars();
+
+    const contactForm = document.getElementById('contactForm');
+    const contactFeedback = document.getElementById('contactFeedback');
+    const contactSubmit = document.getElementById('contactSubmit');
+
+    function setContactFeedback(type, message) {
+      if (!contactFeedback) return;
+      contactFeedback.textContent = message;
+      contactFeedback.classList.remove('success', 'error');
+      if (type) {
+        contactFeedback.classList.add(type);
+      }
+    }
+
+    function sanitise(value = '') {
+      return value ? value.toString().trim() : '';
+    }
+
+    if (contactForm && contactSubmit) {
+      contactForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        setContactFeedback('', '');
+
+        const lastname = sanitise(contactForm.lastname?.value);
+        const firstname = sanitise(contactForm.firstname?.value);
+        const email = sanitise(contactForm.email?.value);
+        const phone = sanitise(contactForm.phone?.value);
+        const preferredTimeRaw = sanitise(contactForm.preferred_time?.value);
+
+        if (!lastname || !firstname || !email || !phone) {
+          setContactFeedback('error', 'Merci de compléter tous les champs obligatoires.');
+          return;
+        }
+
+        const preferred_time = preferredTimeRaw || null;
+
+        contactSubmit.disabled = true;
+        const originalText = contactSubmit.dataset.originalText || contactSubmit.textContent;
+        contactSubmit.dataset.originalText = originalText;
+        contactSubmit.textContent = 'Envoi en cours…';
+
+        const { error } = await supabase
+          .from('contacts')
+          .insert([
+            {
+              lastname,
+              firstname,
+              email,
+              phone,
+              preferred_time,
+            },
+          ]);
+
+        if (error) {
+          console.error(error);
+          setContactFeedback('error', 'Une erreur est survenue lors de l’envoi. Merci de réessayer.');
+        } else {
+          contactForm.reset();
+          setContactFeedback('success', 'Merci ! Votre demande a bien été envoyée.');
+        }
+
+        contactSubmit.disabled = false;
+        contactSubmit.textContent = contactSubmit.dataset.originalText || 'Envoyer ma demande';
+      });
+    }
   </script>
 </body>
 </html>
