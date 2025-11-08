@@ -124,6 +124,12 @@
               <label>Boîte
                 <input type="text" name="boite" placeholder="Manuelle, Automatique…" required>
               </label>
+              <label>Motorisation
+                <input type="text" name="motorisation" placeholder="Ex : 1.5 TSI 150">
+              </label>
+              <label>Nombre de chevaux
+                <input type="number" name="chevaux" placeholder="Ex : 150">
+              </label>
               <label>Couleur
                 <input type="text" name="couleur">
               </label>
@@ -228,6 +234,8 @@
           prix: Number(form.prix.value),
           carburant: form.carburant.value.trim(),
           boite: form.boite.value.trim(),
+          motorisation: form.motorisation.value.trim() || null,
+          chevaux: form.chevaux.value ? Number(form.chevaux.value) : null,
           couleur: form.couleur.value.trim() || null,
           image_url: imageUrl,
           description_courte: form.description_courte.value.trim() || null,
@@ -270,6 +278,8 @@
         form.prix.value = car.prix || '';
         form.carburant.value = car.carburant || '';
         form.boite.value = car.boite || '';
+        form.motorisation.value = car.motorisation || '';
+        form.chevaux.value = car.chevaux || '';
         form.couleur.value = car.couleur || '';
         form.description_courte.value = car.description_courte || '';
         form.options.value = car.options || '';
@@ -327,6 +337,15 @@
             <span style="color:#777;font-size:.9rem;">
               • ${v.annee} • ${Number(v.kilometrage).toLocaleString('fr-FR')} km
             </span>
+            ${
+              v.motorisation || v.chevaux
+                ? `<div style="font-size:.85rem;color:#555;margin-top:4px;">
+                    ${v.motorisation ? `${v.motorisation}` : ''}
+                    ${v.motorisation && v.chevaux ? ' • ' : ''}
+                    ${v.chevaux ? `${v.chevaux} ch` : ''}
+                  </div>`
+                : ''
+            }
             ${v.vendu ? '<span style="margin-left:8px;padding:2px 8px;border-radius:999px;background:#fce4e4;color:#b30000;font-size:.8rem;">Vendu</span>' : ''}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">

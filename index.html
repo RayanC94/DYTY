@@ -101,6 +101,13 @@
             ${Number(v.kilometrage).toLocaleString('fr-FR')} km •
             ${v.carburant}
           </p>
+          ${(v.motorisation || v.chevaux) ? `
+            <p class="muted">
+              ${v.motorisation ? `${v.motorisation}` : ''}
+              ${v.motorisation && v.chevaux ? ' • ' : ''}
+              ${v.chevaux ? `${v.chevaux} ch` : ''}
+            </p>
+          ` : ''}
           <div class="price">
             ${Number(v.prix).toLocaleString('fr-FR')} €
           </div>

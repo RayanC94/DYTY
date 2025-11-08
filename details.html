@@ -79,6 +79,15 @@
         ${Number(v.kilometrage).toLocaleString('fr-FR')} km •
         ${v.carburant}
       </p>
+      ${
+        v.motorisation || v.chevaux
+          ? `<p class="muted">
+              ${v.motorisation ? `${v.motorisation}` : ''}
+              ${v.motorisation && v.chevaux ? ' • ' : ''}
+              ${v.chevaux ? `${v.chevaux} ch` : ''}
+            </p>`
+          : ''
+      }
       <div class="price xl">
         ${Number(v.prix).toLocaleString('fr-FR')} €
       </div>
@@ -86,6 +95,8 @@
       <dl class="specs">
         <div><dt>Boîte</dt><dd>${v.boite}</dd></div>
         <div><dt>Carburant</dt><dd>${v.carburant}</dd></div>
+        ${v.motorisation ? `<div><dt>Motorisation</dt><dd>${v.motorisation}</dd></div>` : ''}
+        ${v.chevaux ? `<div><dt>Puissance</dt><dd>${v.chevaux} ch</dd></div>` : ''}
         <div><dt>Couleur</dt><dd>${v.couleur ?? ''}</dd></div>
       </dl>
 
